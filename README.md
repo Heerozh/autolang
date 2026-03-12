@@ -151,13 +151,18 @@ tt translate \
 
 By default, the command:
 - reads `locales/en.toml` as the source table
+- reads `.locales_cue/en.toml` as rendered-example cues when available
 - discovers every other `*.toml` file under the same directory as a target locale
 - only translates entries that are missing or still equal to the source text
+- sends translation requests in batches and can execute multiple batches concurrently
+- validates returned JSON and placeholder compatibility before writing files
 
 Useful flags:
 - `--target-locales es fr` to restrict which locale files are updated
 - `--overwrite` to force re-translation of existing target values
 - `--dry-run` to preview work without writing files
+- `--batch-size 20` to control how many entries are sent in one model request
+- `--workers 4` to control concurrent batch requests
 - `--base-url` to point at any OpenAI-compatible endpoint
 
 The CLI also reads these environment variables:
