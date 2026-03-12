@@ -208,9 +208,6 @@ class TransparentTranslator:
             return fallback
 
 
-_global_translator = TransparentTranslator("en")
-
-
 def install(
     locale_str: str,
     locale_dir: str = "locales",
@@ -218,43 +215,11 @@ def install(
     collect_missing: bool = False,
     collect_locales: list[str] | tuple[str, ...] | None = None,
 ) -> TransparentTranslator:
-    """Replace the default translator used by the module-level `_()` helper."""
-    global _global_translator
-    _global_translator = TransparentTranslator(
+    """Create a translator instance without mutating the module-level default translator."""
+    return TransparentTranslator(
         locale_str,
         locale_dir,
         collect_missing=collect_missing,
         collect_locales=collect_locales,
     )
-    return _global_translator
 
-
-def get_translator() -> TransparentTranslator:
-    return _global_translator
-
-
-def reload() -> None:
-    _global_translator.reload()
-
-
-def clear_cache() -> None:
-    _global_translator.clear_cache()
-
-
-def collect(text: str, cue: str | None = None) -> str:
-    """Collect a runtime string into the configured TOML file when enabled."""
-    return _global_translator.collect(text, cue=cue)
-
-
-def _(text: str) -> str:
-    """Translate a string while preserving f-string ergonomics at the call site."""
-    frame = inspect.currentframe()
-    caller = frame.f_back if frame is not None else None
-    if caller is None:
-        return text
-
-    try:
-        return _global_translator._translate_from_frame(text, caller)
-    finally:
-        del caller
-        del frame

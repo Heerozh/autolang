@@ -7,7 +7,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import _, TransparentTranslator, install
+from transparentlation import TransparentTranslator, install
 from babel.support import Format
 from babel import Locale
 
@@ -17,26 +17,25 @@ fmt = Format(Locale.parse("en"))
 
 @pytest.fixture(autouse=True)
 def setup_translator():
-    # Install the translator using the test locales folder
     test_locales_dir = os.path.join(os.path.dirname(__file__), "locales")
-    install("es", test_locales_dir)
+    return install("es", test_locales_dir)
 
 
-def test_basic_translation():
+def test_basic_translation(setup_translator):
     name = "Alice"
-    result = _(f"Hello {name}")
+    result = setup_translator.translate(f"Hello {name}")
     assert result == "Hola Alice"
 
 
-def test_fallback_untranslated():
+def test_fallback_untranslated(setup_translator):
     # Cold start should fallback to original string if not in TOML
-    result = _(f"Untranslated string")
+    result = setup_translator.translate(f"Untranslated string")
     assert result == "Untranslated string"
 
 
-def test_currency_formatting():
+def test_currency_formatting(setup_translator):
     balance = 1234.56
-    result = _(f"Account balance: {fmt.currency(balance, 'USD')}")
+    result = setup_translator.translate(f"Account balance: {fmt.currency(balance, 'USD')}")
     # In Spanish locale, Babel formats currency differently (e.g., using commas or symbol placement)
     # The expected output may be something like "Saldo de la cuenta: 1234,56 US$"
 
@@ -45,19 +44,19 @@ def test_currency_formatting():
     assert "1.234" in result
 
 
-def test_date_formatting():
+def test_date_formatting(setup_translator):
     now = datetime(2026, 3, 11)
-    result = _(f"Today is {fmt.date(now, format='short')}")
+    result = setup_translator.translate(f"Today is {fmt.date(now, format='short')}")
     # In Spanish (es), short date is often DD/MM/YY
     assert "Hoy es 11/3/26" in result or "Hoy es 11/03/26" in result
 
 
-def test_hot_path_caching():
+def test_hot_path_caching(setup_translator):
     # Test that calling the same exact line multiple times uses the cached bytecode
     name = "CachedUser"
 
     def wrapped_call():
-        return _(f"Hello {name}")
+        return setup_translator.translate(f"Hello {name}")
 
     assert wrapped_call() == "Hola CachedUser"
     assert wrapped_call() == "Hola CachedUser"

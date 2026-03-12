@@ -1,16 +1,14 @@
 # Transparentlation
 
 `Transparentlation` is an experimental i18n library for Python `f-string` call sites.
-It lets you write `_(f"...")`, reconstructs the original template at runtime, looks up a translated template from TOML, and re-evaluates the translated placeholders with Babel-aware formatting.
+It lets you bind a module-level `tt` function, write `tt(f"...")`, reconstruct the original template at runtime, look up a translated template from TOML, and re-evaluate the translated placeholders with Babel-aware formatting.
 
 ## Status
 
 This project is under active development.
 
 Stable today:
-- Module-level `_(...)` translation helper
-- Module-level `collect(...)` helper for runtime string capture
-- `install(locale, locale_dir)` to switch the default translator
+- `install(locale, locale_dir)` to create an isolated translator instance
 - `TransparentTranslator` for explicit instances
 - TOML-backed translation lookup
 - Babel `fmt.*` placeholder support inside translated templates
@@ -54,9 +52,10 @@ from datetime import datetime
 from babel import Locale
 from babel.support import Format
 
-from transparentlation import _, install
+from transparentlation import install
 
-install("es", "locales")
+translator = install("es", "locales")
+tt = translator.translate
 
 # A local fmt object keeps the original f-string valid before translation happens.
 fmt = Format(Locale.parse("en"))
@@ -64,8 +63,8 @@ fmt = Format(Locale.parse("en"))
 name = "Alice"
 now = datetime(2026, 3, 11)
 
-print(_(f"Hello {name}"))
-print(_(f"Today is {fmt.date(now, format='short')}"))
+print(tt(f"Hello {name}"))
+print(tt(f"Today is {fmt.date(now, format='short')}"))
 ```
 
 Example output:
@@ -79,36 +78,52 @@ Hoy es 11/3/26
 
 ```python
 from transparentlation import (
-    _,
-    collect,
     TransparentTranslator,
-    clear_cache,
-    get_translator,
     install,
-    reload,
 )
 ```
 
-- `_(text)` translates the current call site with the default translator.
-- `collect(text, cue=None)` records a runtime string into the configured collection TOML and returns the original text.
-- `install(locale_str, locale_dir="locales", collect_missing=False, collect_locales=None)` replaces the default translator and returns it.
-- `get_translator()` returns the current default translator instance.
-- `reload()` reloads the active locale file and clears cached call-site entries.
-- `clear_cache()` clears the default translator cache without reloading files.
+- `install(locale_str, locale_dir="locales", collect_missing=False, collect_locales=None)` creates and returns a translator instance.
 - `TransparentTranslator(locale_str, locale_dir="locales", collect_missing=False, collect_locales=None)` creates an explicit translator instance with its own cache.
+- `translator.translate(text)` translates the current call site.
+- `translator.collect(text, cue=None)` records a runtime string into the configured collection TOML and returns the original text.
+- `translator.reload()` reloads the instance locale file and clears its cached call-site entries.
+- `translator.clear_cache()` clears the instance cache without reloading files.
+
+## Module Setup
+
+The recommended pattern is to initialize a module-level `tt` variable once and then call `tt(...)` everywhere in that module.
+
+```python
+from transparentlation import install
+
+translator = install("es", "locales")
+tt = translator.translate
+```
+
+If you also want runtime collection helpers in the same module:
+
+```python
+from transparentlation import install
+
+translator = install("es", "locales", collect_missing=True, collect_locales=["en", "es"])
+tt = translator.translate
+collect = translator.collect
+```
 
 ## Runtime Collection
 
-If you want untranslated text to be collected while the program runs, enable `collect_missing`.
+If you want untranslated text to be collected while the program runs, enable `collect_missing` on your own translator instance.
 
 ```python
-from transparentlation import _, collect, install
+from transparentlation import install
 
-install("es", "locales", collect_missing=True, collect_locales=["en", "es", "fr"])
+translator = install("es", "locales", collect_missing=True, collect_locales=["en", "es", "fr"])
+tt = translator.translate
 
 name = "Alice"
-print(_(f"Hello {name}"))
-collect("background worker started")
+print(tt(f"Hello {name}"))
+translator.collect("background worker started")
 ```
 
 This writes missing entries directly into each configured translation table:
@@ -174,7 +189,8 @@ The CLI also reads these environment variables:
 
 At a high level:
 
-1. You call `_(f"...")`.
+1. You call `tt(f"...")`.
+   Here `tt = translator.translate`.
 2. The library inspects the caller frame and maps it back to the AST node for that exact call site.
 3. It rebuilds the source template, for example `Hello {name}`.
 4. It loads the translated template from TOML.
@@ -185,7 +201,8 @@ At a high level:
 
 This is not a drop-in replacement for mature gettext tooling yet.
 
-- The main path is designed for direct `_(f"...")` usage.
+- The main path is designed for direct `tt(f"...")` usage after binding `tt = translator.translate`.
+- Library code should keep its own translator instance and bind its own `tt` function in module scope.
 - Translation lookup is currently a flat TOML key-value map.
 - Runtime collection writes flat TOML entries and currently rewrites the file content instead of preserving comments.
 - Runtime collection writes directly into the language TOML files you configure in `collect_locales`.

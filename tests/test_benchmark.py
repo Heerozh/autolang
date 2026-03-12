@@ -8,17 +8,17 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import _, install
+from transparentlation import install
 
 
 @pytest.fixture(autouse=True)
 def setup_translator():
     # Setup dummy localized translator with empty translation
     # Which forces it to just evaluate the original text quickly
-    install("en", "dummy_path_does_not_exist")
+    return install("en", "dummy_path_does_not_exist")
 
 
-def test_hot_path_performance_guarantee(benchmark):
+def test_hot_path_performance_guarantee(benchmark, setup_translator):
     # We want to benchmark the hot path performance against format
     foreign_template = "【Translated】 User {user} has completed {item_count} items."
 
@@ -40,12 +40,12 @@ def test_hot_path_performance_guarantee(benchmark):
     item_count = 50
 
     # Fire off cold start
-    _(f"【Translated】 User {user} has completed {item_count} items.")
+    setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
 
     def approach_transparentlation():
         # Using _() directly relies on inspecting frame, so there's minor overhead
         # but it should securely beat baseline by evaluating the byte code
-        return _(f"【Translated】 User {user} has completed {item_count} items.")
+        return setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
 
     # Get current context for baseline
     frame = inspect.currentframe()
@@ -60,13 +60,13 @@ def test_hot_path_performance_guarantee(benchmark):
     benchmark(run_baseline)
 
 
-def test_our_package_timing(benchmark):
+def test_our_package_timing(benchmark, setup_translator):
     benchmark.group = "hot-path"
     user = "Alice"
     item_count = 50
-    _(f"【Translated】 User {user} has completed {item_count} items.")
+    setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
 
     def wrapped_execute():
-        return _(f"【Translated】 User {user} has completed {item_count} items.")
+        return setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
 
     benchmark(wrapped_execute)

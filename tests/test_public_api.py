@@ -5,62 +5,37 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import _, clear_cache, collect, get_translator, install, reload
+from transparentlation import TransparentTranslator, install
 
 
-def test_install_returns_default_translator(tmp_path):
+def test_install_returns_translator_instance(tmp_path):
     (tmp_path / "es.toml").write_text('"Hello {name}" = "Hola {name}"\n', encoding="utf-8")
 
     translator = install("es", str(tmp_path))
 
-    assert translator is get_translator()
+    assert isinstance(translator, TransparentTranslator)
 
 
-def test_module_reload_refreshes_default_translator(tmp_path):
-    locale_file = tmp_path / "es.toml"
-    locale_file.write_text('"Hello {name}" = "Hola {name}"\n', encoding="utf-8")
-
-    install("es", str(tmp_path))
-    name = "Alice"
-
-    def wrapped_call():
-        return _(f"Hello {name}")
-
-    assert wrapped_call() == "Hola Alice"
-
-    locale_file.write_text('"Hello {name}" = "Buenas {name}"\n', encoding="utf-8")
-    reload()
-
-    assert wrapped_call() == "Buenas Alice"
-
-
-def test_clear_cache_keeps_current_translations(tmp_path):
+def test_install_result_can_be_bound_to_module_level_tt(tmp_path):
     (tmp_path / "es.toml").write_text('"Hello {name}" = "Hola {name}"\n', encoding="utf-8")
-
-    install("es", str(tmp_path))
+    translator = install("es", str(tmp_path))
+    tt = translator.translate
     name = "Alice"
 
-    def wrapped_call():
-        return _(f"Hello {name}")
-
-    assert wrapped_call() == "Hola Alice"
-
-    clear_cache()
-
-    assert wrapped_call() == "Hola Alice"
+    assert tt(f"Hello {name}") == "Hola Alice"
 
 
-def test_collect_records_runtime_text(tmp_path):
+def test_collect_records_runtime_text_via_instance(tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()
-    install(
+    translator = install(
         "es",
         str(locale_dir),
         collect_missing=True,
         collect_locales=["en", "es"],
     )
 
-    assert collect("runtime log line") == "runtime log line"
+    assert translator.collect("runtime log line") == "runtime log line"
     assert (locale_dir / "en.toml").read_text(encoding="utf-8") == (
         '"runtime log line" = "runtime log line"\n'
     )
@@ -78,9 +53,9 @@ def test_collect_records_runtime_text(tmp_path):
 def test_collect_accepts_explicit_cue(tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()
-    install("es", str(locale_dir), collect_missing=True, collect_locales=["es"])
+    translator = install("es", str(locale_dir), collect_missing=True, collect_locales=["es"])
 
-    assert collect("Hello {name}", cue="Hello Alice") == "Hello {name}"
+    assert translator.collect("Hello {name}", cue="Hello Alice") == "Hello {name}"
     assert (tmp_path / ".locales_cue" / "es.toml").read_text(encoding="utf-8") == (
         '"Hello {name}" = "Hello Alice"\n'
     )
