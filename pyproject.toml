@@ -1,0 +1,25 @@
+
+
+[project]
+name = "transparentlation"
+version = "0.1.0"
+description = "Transparent i18n for Python f-strings with TOML-backed translations."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "babel>=2.18.0",
+    "executing>=2.2.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pyright]
+typeCheckingMode = "standard"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
+    "pytest>=9.0.2",
+    "pytest-benchmark>=5.2.3",
+]
