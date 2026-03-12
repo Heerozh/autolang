@@ -107,6 +107,48 @@ def test_translation_eval_errors_fall_back_to_source_text(tmp_path):
     assert result == "Hello Alice"
 
 
+def test_f_string_format_spec_is_preserved_in_translation_key(tmp_path):
+    (tmp_path / "es.toml").write_text(
+        '"Price: {price:.2f}" = "Precio: {price:.2f}"\n',
+        encoding="utf-8",
+    )
+
+    translator = TransparentTranslator("es", str(tmp_path))
+    price = 12.345
+
+    assert translator.translate(f"Price: {price:.2f}") == "Precio: 12.35"
+
+
+def test_f_string_conversion_is_preserved_in_translation_key(tmp_path):
+    (tmp_path / "es.toml").write_text(
+        '"Debug: {obj!r}" = "Depurar: {obj!r}"\n',
+        encoding="utf-8",
+    )
+
+    translator = TransparentTranslator("es", str(tmp_path))
+
+    class Demo:
+        def __repr__(self) -> str:
+            return "<demo>"
+
+    obj = Demo()
+
+    assert translator.translate(f"Debug: {obj!r}") == "Depurar: <demo>"
+
+
+def test_f_string_conversion_and_nested_format_spec_are_preserved(tmp_path):
+    (tmp_path / "es.toml").write_text(
+        '"Value: {value!s:>{width}}" = "Valor: {value!s:>{width}}"\n',
+        encoding="utf-8",
+    )
+
+    translator = TransparentTranslator("es", str(tmp_path))
+    value = 7
+    width = 4
+
+    assert translator.translate(f"Value: {value!s:>{width}}") == "Valor:    7"
+
+
 def test_missing_translation_is_collected_into_toml(tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()

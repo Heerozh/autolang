@@ -183,11 +183,39 @@ class TransparentTranslator:
                 continue
 
             if isinstance(value, ast.FormattedValue):
-                expression = ast.unparse(value.value)
-                parts.append(f"{{{expression}}}")
-                variables.append(expression)
+                rendered, expressions = self._render_formatted_value(value)
+                parts.append(rendered)
+                variables.extend(expressions)
 
         return "".join(parts), tuple(variables)
+
+    def _render_joined_str(self, node: ast.JoinedStr) -> tuple[str, tuple[str, ...]]:
+        parts: list[str] = []
+        expressions: list[str] = []
+
+        for value in node.values:
+            if isinstance(value, ast.Constant):
+                parts.append(str(value.value))
+                continue
+
+            if isinstance(value, ast.FormattedValue):
+                rendered, nested_expressions = self._render_formatted_value(value)
+                parts.append(rendered)
+                expressions.extend(nested_expressions)
+
+        return "".join(parts), tuple(expressions)
+
+    def _render_formatted_value(self, node: ast.FormattedValue) -> tuple[str, tuple[str, ...]]:
+        expression = ast.unparse(node.value)
+        conversion = "" if node.conversion < 0 else f"!{chr(node.conversion)}"
+        format_spec = ""
+        nested_expressions: tuple[str, ...] = ()
+
+        if isinstance(node.format_spec, ast.JoinedStr):
+            rendered_spec, nested_expressions = self._render_joined_str(node.format_spec)
+            format_spec = f":{rendered_spec}"
+
+        return f"{{{expression}{conversion}{format_spec}}}", (expression, *nested_expressions)
 
     def _compile_foreign_string(self, translated: str) -> Any | None:
         try:
@@ -222,4 +250,3 @@ def install(
         collect_missing=collect_missing,
         collect_locales=collect_locales,
     )
-
