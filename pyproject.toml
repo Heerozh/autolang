@@ -1,7 +1,7 @@
 
 
 [project]
-name = "transparentlation"
+name = "autolang"
 version = "0.1.0"
 description = "Transparent i18n for Python f-strings with TOML-backed translations."
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tt = "transparentlation.cli:main"
+tt = "autolang.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

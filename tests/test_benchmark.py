@@ -8,7 +8,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import install
+from autolang import install
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +33,7 @@ def test_hot_path_performance_guarantee(benchmark, setup_translator):
         }
         return foreign_template.format(**kwargs)
 
-    # 2. Transparentlation library method:
+    # 2. Autolang library method:
     # Here we trigger a cold start to populate cache,
     # then subsequent calls hit the ultra fast hot-path
     user = "Alice"
@@ -42,7 +42,7 @@ def test_hot_path_performance_guarantee(benchmark, setup_translator):
     # Fire off cold start
     setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
 
-    def approach_transparentlation():
+    def approach_autolang():
         # Using _() directly relies on inspecting frame, so there's minor overhead
         # but it should securely beat baseline by evaluating the byte code
         return setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")

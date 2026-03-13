@@ -210,7 +210,7 @@ class OpenAICompatibleClient:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="tt", description="Transparentlation developer tools.")
+    parser = argparse.ArgumentParser(prog="tt", description="Autolang developer tools.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     translate_parser = subparsers.add_parser(

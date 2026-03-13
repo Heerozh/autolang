@@ -1,6 +1,6 @@
-# Transparentlation
+# Autolang
 
-`Transparentlation` is an experimental i18n library for Python `f-string` call sites.
+`Autolang` is an experimental i18n library for Python `f-string` call sites.
 It lets you bind a module-level `tt` function, write `tt(f"...")`, reconstruct the original template at runtime, look up a translated template from TOML, and re-evaluate the translated placeholders with Babel-aware formatting.
 
 ## Status
@@ -23,7 +23,7 @@ Planned:
 ## Installation
 
 ```bash
-pip install transparentlation
+pip install autolang
 ```
 
 ## Quick Start
@@ -52,7 +52,7 @@ from datetime import datetime
 from babel import Locale
 from babel.support import Format
 
-from transparentlation import install
+from autolang import install
 
 translator = install("es", "locales")
 tt = translator.translate
@@ -77,7 +77,7 @@ Hoy es 11/3/26
 ## Public API
 
 ```python
-from transparentlation import (
+from autolang import (
     TransparentTranslator,
     install,
 )
@@ -95,7 +95,7 @@ from transparentlation import (
 The recommended pattern is to initialize a module-level `tt` variable once and then call `tt(...)` everywhere in that module.
 
 ```python
-from transparentlation import install
+from autolang import install
 
 translator = install("es", "locales")
 tt = translator.translate
@@ -104,7 +104,7 @@ tt = translator.translate
 If you also want runtime collection helpers in the same module:
 
 ```python
-from transparentlation import install
+from autolang import install
 
 translator = install("es", "locales", collect_missing=True, collect_locales=["en", "es"])
 tt = translator.translate
@@ -116,7 +116,7 @@ collect = translator.collect
 If you want untranslated text to be collected while the program runs, enable `collect_missing` on your own translator instance.
 
 ```python
-from transparentlation import install
+from autolang import install
 
 translator = install("es", "locales", collect_missing=True, collect_locales=["en", "es", "fr"])
 tt = translator.translate

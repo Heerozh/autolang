@@ -219,7 +219,7 @@ class TransparentTranslator:
 
     def _compile_foreign_string(self, translated: str) -> Any | None:
         try:
-            return compile(f"f{translated!r}", "<transparentlation>", "eval")
+            return compile(f"f{translated!r}", "<autolang>", "eval")
         except Exception:
             return None
 

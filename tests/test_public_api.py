@@ -5,7 +5,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import TransparentTranslator, install
+from autolang import TransparentTranslator, install
 
 
 def test_install_returns_translator_instance(tmp_path):

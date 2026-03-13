@@ -7,7 +7,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import TransparentTranslator, install
+from autolang import TransparentTranslator, install
 from babel.support import Format
 from babel import Locale
 

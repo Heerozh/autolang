@@ -7,8 +7,8 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from transparentlation import cli
-from transparentlation.toml_io import load_string_table
+from autolang import cli
+from autolang.toml_io import load_string_table
 
 
 class FakeBatchClient:
