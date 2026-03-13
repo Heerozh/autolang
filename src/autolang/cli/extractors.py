@@ -7,7 +7,7 @@ from collections.abc import Collection, Generator, Mapping
 from typing import Any
 
 from .static_analysis import analyze_static_cues
-from .source_templates import extract_template_from_call
+from ..source_templates import extract_template_from_call
 
 
 class _TTCallExtractor(ast.NodeVisitor):

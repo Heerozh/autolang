@@ -4,7 +4,7 @@ import ast
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from .source_templates import extract_template_from_call, render_formatted_value
+from ..source_templates import extract_template_from_call, render_formatted_value
 
 
 @dataclass(frozen=True, slots=True)

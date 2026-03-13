@@ -11,11 +11,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
-from babel import Locale
-from babel.messages.extract import extract, extract_from_dir
-
-from .toml_io import load_string_table, write_string_table
-
+from ..toml_io import load_string_table, write_string_table
+from .common import locale_display_name, load_source_cues, normalize_language
 
 TRANSLATION_SYSTEM_PROMPT = """You are a localization rewrite engine for python template strings with Babel CLDR formatting.
 
@@ -84,14 +81,6 @@ ALLOWED_FMT_FUNCS = {
     "timedelta",
 }
 COMPACT_SCALE_VALUES = {1000, 1000000, 1000000000}
-TT_EXTRACTION_METHOD = "autolang.extractors:extract_tt_python"
-TT_EXTRACTION_KEYWORDS = {"tt": None}
-SKIPPED_SOURCE_DIR_NAMES = {
-    "__pycache__",
-    "build",
-    "dist",
-    "node_modules",
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,47 +208,6 @@ class OpenAICompatibleClient:
         raise RuntimeError(f"Unexpected API response: {response}")
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="tt", description="Autolang developer tools.")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    translate_parser = subparsers.add_parser(
-        "translate",
-        help="Translate locale TOML files through an OpenAI-compatible API.",
-    )
-    translate_parser.add_argument("--locale-dir", default="locales")
-    translate_parser.add_argument("--source-locale", default="en")
-    translate_parser.add_argument("--target-locales", nargs="*", default=None)
-    translate_parser.add_argument("--source-language", default=None)
-    translate_parser.add_argument("--model", default=None)
-    translate_parser.add_argument("--base-url", default=None)
-    translate_parser.add_argument("--api-key", default=None)
-    translate_parser.add_argument("--timeout", type=float, default=60.0)
-    translate_parser.add_argument("--workers", type=int, default=4)
-    translate_parser.add_argument("--batch-size", type=int, default=20)
-    translate_parser.add_argument("--overwrite", action="store_true")
-    translate_parser.add_argument("--dry-run", action="store_true")
-    translate_parser.set_defaults(handler=handle_translate_command)
-
-    collect_parser = subparsers.add_parser(
-        "collect",
-        help="Collect tt()-wrapped source templates into the source locale TOML file.",
-    )
-    collect_parser.add_argument("--source", default=".")
-    collect_parser.add_argument("--locale-dir", default="locales")
-    collect_parser.add_argument("--source-locale", default="en")
-    collect_parser.add_argument("--dry-run", action="store_true")
-    collect_parser.set_defaults(handler=handle_collect_command)
-
-    return parser
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    return args.handler(args)
-
-
 def handle_translate_command(args: argparse.Namespace) -> int:
     locale_dir = Path(args.locale_dir)
     source_locale = normalize_language(args.source_locale)
@@ -342,37 +290,6 @@ def handle_translate_command(args: argparse.Namespace) -> int:
             write_string_table(str(locale_dir / f"{target_locale}.toml"), target_entries)
 
     print(f"Updated {len(target_locales)} locale file(s), translated {total_translated} entry/entries.")
-    return 0
-
-
-def handle_collect_command(args: argparse.Namespace) -> int:
-    source_path = Path(args.source)
-    locale_dir = Path(args.locale_dir)
-    source_locale = normalize_language(args.source_locale)
-
-    extracted_cues, scanned_files = collect_source_templates(source_path)
-    unique_messages = list(extracted_cues)
-
-    source_path = locale_dir / f"{source_locale}.toml"
-    cue_path = build_source_cue_path(locale_dir, source_locale)
-    source_entries = load_string_table(str(source_path))
-    source_cues = load_string_table(str(cue_path))
-    added_entries = 0
-
-    for message in unique_messages:
-        if message not in source_entries:
-            source_entries[message] = message
-            added_entries += 1
-        source_cues[message] = extracted_cues.get(message, "")
-
-    if not args.dry_run:
-        write_string_table(str(source_path), source_entries)
-        write_string_table(str(cue_path), source_cues)
-
-    print(
-        f"Scanned {scanned_files} Python file(s), collected {len(unique_messages)} template(s), "
-        f"added {added_entries} new entry/entries."
-    )
     return 0
 
 
@@ -761,81 +678,5 @@ def resolve_target_locales(
     return discovered
 
 
-def collect_source_templates(source_path: Path) -> tuple[dict[str, str], int]:
-    if not source_path.exists():
-        raise SystemExit(f"Source path not found: {source_path}")
-
-    if source_path.is_file():
-        if source_path.suffix != ".py":
-            raise SystemExit(f"Source path must be a Python file or directory: {source_path}")
-        return extract_templates_from_file(source_path), 1
-
-    scanned_files: set[str] = set()
-    extracted = extract_from_dir(
-        str(source_path),
-        method_map=[("**.py", TT_EXTRACTION_METHOD)],
-        keywords=TT_EXTRACTION_KEYWORDS,
-        callback=build_extraction_callback(scanned_files),
-        directory_filter=should_recurse_into_directory,
-    )
-    cues: dict[str, str] = {}
-    for _filename, _lineno, message, comments, _context in extracted:
-        if not isinstance(message, str) or not message:
-            continue
-        cues.setdefault(message, comments[0] if comments else "")
-    return cues, len(scanned_files)
-
-
-def extract_templates_from_file(source_path: Path) -> dict[str, str]:
-    with source_path.open("rb") as fileobj:
-        extracted = extract(
-            TT_EXTRACTION_METHOD,
-            fileobj,
-            keywords=TT_EXTRACTION_KEYWORDS,
-            options={"filename": str(source_path)},
-        )
-        cues: dict[str, str] = {}
-        for _lineno, message, comments, _context in extracted:
-            if isinstance(message, str) and message:
-                cues.setdefault(message, comments[0] if comments else "")
-        return cues
-
-
-def load_source_cues(locale_dir: Path, source_locale: str) -> dict[str, str]:
-    return load_string_table(str(build_source_cue_path(locale_dir, source_locale)))
-
-
-def build_extraction_callback(scanned_files: set[str]):
-    def callback(filename: str, method: str, options: dict[str, object]) -> None:
-        del method
-        scanned_files.add(filename)
-        options["filename"] = filename
-
-    return callback
-
-
-def build_source_cue_path(locale_dir: Path, source_locale: str) -> Path:
-    cue_dir = locale_dir.parent / f".{locale_dir.name}_cue"
-    return cue_dir / f"{source_locale}.toml"
-
-
-def should_recurse_into_directory(path: str) -> bool:
-    name = Path(path).name
-    return not name.startswith(".") and name not in SKIPPED_SOURCE_DIR_NAMES
-
-
-def normalize_language(locale_name: str) -> str:
-    return Locale.parse(locale_name).language
-
-
-def locale_display_name(locale_name: str) -> str:
-    locale = Locale.parse(locale_name)
-    return locale.get_display_name("en").title()
-
-
 def chunked(items: list[TranslationTask], size: int) -> list[list[TranslationTask]]:
     return [items[index : index + size] for index in range(0, len(items), size)]
-
-
-if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(main())

@@ -5,7 +5,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from autolang.static_analysis import suggest_placeholder_candidates
+from autolang.cli.static_analysis import suggest_placeholder_candidates
 
 
 def test_suggest_placeholder_candidates_is_greedy_when_type_is_unknown():
