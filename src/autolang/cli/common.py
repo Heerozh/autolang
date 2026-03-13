@@ -12,6 +12,7 @@ SKIPPED_SOURCE_DIR_NAMES = {
     "dist",
     "node_modules",
 }
+NO_TRANSLATION = "NO_TRANSLATION"
 
 
 def load_source_cues(locale_dir: Path, source_locale: str) -> dict[str, str]:
@@ -21,6 +22,10 @@ def load_source_cues(locale_dir: Path, source_locale: str) -> dict[str, str]:
 def build_source_cue_path(locale_dir: Path, source_locale: str) -> Path:
     cue_dir = locale_dir.parent / f".{locale_dir.name}_cue"
     return cue_dir / f"{source_locale}.toml"
+
+
+def list_locale_files(locale_dir: Path) -> list[Path]:
+    return sorted(path for path in locale_dir.glob("*.toml") if path.is_file())
 
 
 def should_recurse_into_directory(path: str) -> bool:

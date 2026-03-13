@@ -8,6 +8,7 @@ sys.path.insert(
 )
 
 from autolang import cli
+from autolang.cli import translate as cli_translate
 from autolang.toml_io import load_string_table
 
 
@@ -136,7 +137,7 @@ def test_tt_translate_dry_run_does_not_write(monkeypatch, tmp_path):
     assert load_string_table(str(locale_dir / "es.toml")) == {}
 
 
-def test_tt_collect_extracts_tt_fstrings_into_source_locale_and_cues(tmp_path):
+def test_tt_sync_updates_all_locale_files_and_cues(tmp_path):
     source_dir = tmp_path / "src"
     locale_dir = tmp_path / "locales"
     source_dir.mkdir()
@@ -155,25 +156,35 @@ def test_tt_collect_extracts_tt_fstrings_into_source_locale_and_cues(tmp_path):
         "print(tt(f'Hidden {name}'))\n",
         encoding="utf-8",
     )
-    (locale_dir / "en.toml").write_text('"Existing" = "Existing"\n', encoding="utf-8")
+    (locale_dir / "en.toml").write_text(
+        '"Existing" = "Existing"\n'
+        '"Hello {name}" = "Hello {name}"\n',
+        encoding="utf-8",
+    )
+    (locale_dir / "es.toml").write_text(
+        '"Hello {name}" = "Hola {name}"\n'
+        '"Obsolete" = "Obsoleto"\n',
+        encoding="utf-8",
+    )
 
     exit_code = cli.main(
         [
-            "collect",
+            "sync",
             "--source",
             str(tmp_path),
             "--locale-dir",
             str(locale_dir),
-            "--source-locale",
-            "en",
         ]
     )
 
     assert exit_code == 0
     assert load_string_table(str(locale_dir / "en.toml")) == {
-        "Existing": "Existing",
         "Hello {name}": "Hello {name}",
-        "Price: {price:.2f}": "Price: {price:.2f}",
+        "Price: {price:.2f}": "NO_TRANSLATION",
+    }
+    assert load_string_table(str(locale_dir / "es.toml")) == {
+        "Hello {name}": "Hola {name}",
+        "Price: {price:.2f}": "NO_TRANSLATION",
     }
     cues = load_string_table(str(tmp_path / ".locales_cue" / "en.toml"))
     assert "Template: Hello {name}" in cues["Hello {name}"]
@@ -181,13 +192,53 @@ def test_tt_collect_extracts_tt_fstrings_into_source_locale_and_cues(tmp_path):
     assert "Allowed candidates: {name}" in cues["Hello {name}"]
     assert "Template: Price: {price:.2f}" in cues["Price: {price:.2f}"]
     assert "Source placeholder already uses an f-string format spec." in cues["Price: {price:.2f}"]
+    es_cues = load_string_table(str(tmp_path / ".locales_cue" / "es.toml"))
+    assert es_cues == cues
 
 
-def test_tt_collect_dry_run_does_not_write(tmp_path):
+def test_tt_init_creates_locale_files_with_no_translation_markers(tmp_path):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    source_dir.mkdir()
+    (source_dir / "app.py").write_text(
+        "print(tt('Hello'))\n"
+        "print(tt('Hola'))\n"
+        "print(tt('你好'))\n",
+        encoding="utf-8",
+    )
+
+    exit_code = cli.main(
+        [
+            "init",
+            "--source",
+            str(source_dir),
+            "--locale-dir",
+            str(locale_dir),
+            "--locales",
+            "en",
+            "es",
+        ]
+    )
+
+    assert exit_code == 0
+    assert load_string_table(str(locale_dir / "en.toml")) == {
+        "Hello": "NO_TRANSLATION",
+        "Hola": "NO_TRANSLATION",
+        "你好": "NO_TRANSLATION",
+    }
+    assert load_string_table(str(locale_dir / "es.toml")) == {
+        "Hello": "NO_TRANSLATION",
+        "Hola": "NO_TRANSLATION",
+        "你好": "NO_TRANSLATION",
+    }
+
+
+def test_tt_sync_dry_run_does_not_write(tmp_path):
     source_dir = tmp_path / "src"
     locale_dir = tmp_path / "locales"
     source_dir.mkdir()
     locale_dir.mkdir()
+    (locale_dir / "en.toml").write_text("", encoding="utf-8")
     (source_dir / "app.py").write_text(
         "name = 'Alice'\n"
         "print(tt(f'Hello {name}'))\n",
@@ -196,13 +247,11 @@ def test_tt_collect_dry_run_does_not_write(tmp_path):
 
     exit_code = cli.main(
         [
-            "collect",
+            "sync",
             "--source",
             str(source_dir),
             "--locale-dir",
             str(locale_dir),
-            "--source-locale",
-            "en",
             "--dry-run",
         ]
     )
@@ -210,6 +259,47 @@ def test_tt_collect_dry_run_does_not_write(tmp_path):
     assert exit_code == 0
     assert load_string_table(str(locale_dir / "en.toml")) == {}
     assert load_string_table(str(tmp_path / ".locales_cue" / "en.toml")) == {}
+
+
+def test_tt_sync_requires_init_when_no_locale_files_exist(tmp_path):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    source_dir.mkdir()
+    locale_dir.mkdir()
+    (source_dir / "app.py").write_text("print(tt('Hello'))\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="Run `tt init"):
+        cli.main(
+            [
+                "sync",
+                "--source",
+                str(source_dir),
+                "--locale-dir",
+                str(locale_dir),
+            ]
+        )
+
+
+def test_tt_init_requires_force_when_locale_files_exist(tmp_path):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    source_dir.mkdir()
+    locale_dir.mkdir()
+    (source_dir / "app.py").write_text("print(tt('Hello'))\n", encoding="utf-8")
+    (locale_dir / "en.toml").write_text('"Hello" = "Hola"\n', encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="--force"):
+        cli.main(
+            [
+                "init",
+                "--source",
+                str(source_dir),
+                "--locale-dir",
+                str(locale_dir),
+                "--locales",
+                "en",
+            ]
+        )
 
 
 def test_tt_translate_rejects_invalid_placeholders(monkeypatch, tmp_path):
@@ -247,3 +337,27 @@ def test_validate_translated_text_allows_fmt_wrappers():
         "discount is {rate}",
         "折扣是{fmt.percent(rate / 100)}",
     )
+
+
+def test_build_batch_user_prompt_treats_source_language_as_optional_hint():
+    request = cli_translate.BatchTranslationRequest(
+        source_locale="en",
+        target_locale="es",
+        source_language=None,
+        target_language="Spanish",
+        items=(
+            cli_translate.BatchTranslationItem(
+                id="hello",
+                key="hello",
+                source_text="Hola",
+                cue_text="No additional cue.",
+            ),
+        ),
+    )
+
+    prompt = cli_translate.build_batch_user_prompt(request)
+
+    assert "Source locale file label: en" in prompt
+    assert "Dominant source language hint: mixed or unknown" in prompt
+    assert "mixed-language" in prompt
+    assert "Source language: English" not in prompt

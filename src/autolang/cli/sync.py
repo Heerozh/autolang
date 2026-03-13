@@ -6,39 +6,55 @@ from pathlib import Path
 from babel.messages.extract import extract, extract_from_dir
 
 from ..toml_io import load_string_table, write_string_table
-from .common import build_source_cue_path, normalize_language, should_recurse_into_directory
+from .common import NO_TRANSLATION, build_source_cue_path, list_locale_files, should_recurse_into_directory
 
 TT_EXTRACTION_METHOD = "autolang.cli.extractors:extract_tt_python"
 TT_EXTRACTION_KEYWORDS = {"tt": None}
 
 
-def handle_collect_command(args: argparse.Namespace) -> int:
+def handle_sync_command(args: argparse.Namespace) -> int:
     source_path = Path(args.source)
     locale_dir = Path(args.locale_dir)
-    source_locale = normalize_language(args.source_locale)
 
     extracted_cues, scanned_files = collect_source_templates(source_path)
     unique_messages = list(extracted_cues)
+    locale_files = list_locale_files(locale_dir)
 
-    locale_path = locale_dir / f"{source_locale}.toml"
-    cue_path = build_source_cue_path(locale_dir, source_locale)
-    source_entries = load_string_table(str(locale_path))
-    source_cues = load_string_table(str(cue_path))
-    added_entries = 0
+    if not locale_files:
+        raise SystemExit(
+            f"No locale TOML files found in {locale_dir}. Run `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...` first."
+        )
 
-    for message in unique_messages:
-        if message not in source_entries:
-            source_entries[message] = message
-            added_entries += 1
-        source_cues[message] = extracted_cues.get(message, "")
+    total_added_entries = 0
+    total_removed_entries = 0
+
+    synced_locale_entries: dict[Path, dict[str, str]] = {}
+    for locale_path in locale_files:
+        current_entries = load_string_table(str(locale_path))
+        synced_entries: dict[str, str] = {}
+        for message in unique_messages:
+            if message in current_entries:
+                synced_entries[message] = current_entries[message]
+            else:
+                synced_entries[message] = NO_TRANSLATION
+                total_added_entries += 1
+        total_removed_entries += len(set(current_entries) - set(unique_messages))
+        synced_locale_entries[locale_path] = synced_entries
 
     if not args.dry_run:
-        write_string_table(str(locale_path), source_entries)
-        write_string_table(str(cue_path), source_cues)
+        for locale_path, synced_entries in synced_locale_entries.items():
+            write_string_table(str(locale_path), synced_entries)
+            write_string_table(str(build_source_cue_path(locale_dir, locale_path.stem)), extracted_cues)
+        cue_dir = locale_dir.parent / f".{locale_dir.name}_cue"
+        active_cue_names = {f"{locale_path.stem}.toml" for locale_path in locale_files}
+        for cue_path in sorted(cue_dir.glob("*.toml")):
+            if cue_path.is_file() and cue_path.name not in active_cue_names:
+                cue_path.unlink()
 
     print(
-        f"Scanned {scanned_files} Python file(s), collected {len(unique_messages)} template(s), "
-        f"added {added_entries} new entry/entries."
+        f"Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), "
+        f"tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, "
+        f"removed {total_removed_entries} stale entry/entries."
     )
     return 0
 

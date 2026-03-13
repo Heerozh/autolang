@@ -13,11 +13,10 @@ Stable today:
 - TOML-backed translation lookup
 - Babel `fmt.*` placeholder support inside translated templates
 - Per-instance call-site cache with `reload()` and `clear_cache()`
-- `tt collect` for static extraction of `tt(f"...")` templates into TOML
+- `tt init` and `tt sync` for locale template bootstrapping and synchronization
 
 Planned:
 - AI-assisted translation generation
-- Automatic TOML comparison and sync tools
 - Better extraction and review workflows
 
 ## Installation
@@ -135,22 +134,39 @@ The CLI also reads these environment variables:
 - `TT_BASE_URL` or `OPENAI_BASE_URL`
 - `TT_MODEL` or `OPENAI_MODEL`
 
-Collect `tt(...)` templates from Python source files into the source locale TOML:
+Initialize locale TOML files from collected `tt(...)` templates:
 
 ```bash
-tt collect \
+tt init \
   --source src \
   --locale-dir locales \
-  --source-locale en
+  --locales en es
 ```
 
 By default, the command:
 - scans Python files under `--source`
 - extracts `tt("...")` and `tt(f"...")` call sites through a Babel-compatible extractor
 - skips hidden and cache/build directories such as `.git`, `.venv`, and `__pycache__`
-- writes missing keys into `locales/en.toml` as `source = source`
-- writes static cue entries into `.locales_cue/en.toml`
+- creates one TOML file per requested locale
+- writes every collected key as `"source" = "NO_TRANSLATION"`
+- writes static cue entries into matching files under `.locales_cue/`
 - includes per-placeholder context such as the nearest assignment, parameter annotation, allowed `fmt.*` candidates, and a recommended candidate when confidence is high
+
+Sync collected templates across existing locale TOML files:
+
+```bash
+tt sync \
+  --source src \
+  --locale-dir locales
+```
+
+By default, the command:
+- scans Python files under `--source`
+- requires at least one existing `*.toml` locale file under `--locale-dir`
+- keeps existing translated values for keys that are still present in source
+- writes missing keys as `"source" = "NO_TRANSLATION"`
+- removes stale keys that are no longer collected from source
+- rewrites cue files under `.locales_cue/` to match the current template set
 
 ## How It Works
 

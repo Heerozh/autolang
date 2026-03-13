@@ -13,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 tt = "autolang.cli:main"
+autolang = "autolang.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
