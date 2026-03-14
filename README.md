@@ -26,7 +26,7 @@ Planned:
 ## Installation
 
 ```bash
-pip install autolang
+uv add autolang && uv add --dev 'autolang[cli]'
 ```
 
 ## Quick Start
@@ -109,6 +109,16 @@ tt = translator.translate
 ## CLI
 
 The project also ships a short developer CLI command: `tt`.
+For downstream projects using `uv`, install it with:
+
+```bash
+uv add autolang
+uv add --dev 'autolang[cli]'
+```
+
+Installing only `autolang` keeps the runtime library available without the optional
+`basedpyright` dependency. Adding the `cli` extra enables the richer placeholder
+analysis used by the developer tooling.
 
 Translate all locale TOML files by filling entries still marked as `MISSING_TRANSLATION`
 through an OpenAI-compatible API:
@@ -218,6 +228,12 @@ Run tests:
 
 ```bash
 uv run pytest -q
+```
+
+Lint:
+
+```bash
+uv run ruff check
 ```
 
 ## Roadmap

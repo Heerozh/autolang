@@ -26,12 +26,17 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "babel" },
-    { name = "basedpyright" },
     { name = "executing" },
+]
+
+[package.optional-dependencies]
+cli = [
+    { name = "basedpyright" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "basedpyright" },
     { name = "ipykernel" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
@@ -41,12 +46,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "babel", specifier = ">=2.18.0" },
-    { name = "basedpyright", specifier = ">=1.38.2" },
+    { name = "basedpyright", marker = "extra == 'cli'", specifier = ">=1.38.2" },
     { name = "executing", specifier = ">=2.2.1" },
 ]
+provides-extras = ["cli"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "basedpyright", specifier = ">=1.38.2" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-benchmark", specifier = ">=5.2.3" },

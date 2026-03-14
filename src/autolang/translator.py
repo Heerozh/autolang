@@ -7,7 +7,6 @@ import os
 from dataclasses import dataclass
 from types import CodeType, FrameType
 from typing import Any
-from venv import logger
 
 import executing
 from babel import Locale
@@ -142,7 +141,7 @@ class TransparentTranslator:
         self, compiled_code: Any | None, frame: FrameType, fallback: str
     ) -> str:
         if compiled_code is None:
-            logger.warning("Fallback, compiled code is none")
+            print("WANNING: Fallback, compiled code is none")
             return fallback
 
         locals_proxy = frame.f_locals.copy()
@@ -151,7 +150,7 @@ class TransparentTranslator:
         try:
             return eval(compiled_code, frame.f_globals, locals_proxy)
         except Exception as e:
-            logger.exception(e)
+            print("ERROR: Fallback, eval failed with exception: " + str(e))
             return fallback
 
 

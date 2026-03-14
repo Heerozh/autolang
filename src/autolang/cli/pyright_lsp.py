@@ -11,7 +11,6 @@ from itertools import count
 from pathlib import Path
 from typing import Any
 
-
 _TYPE_PATTERN = re.compile(r"^\([^)]*\)\s+[^\n:]+:\s*(.+)$")
 _SESSION_LOCK = threading.Lock()
 _SESSIONS: dict[Path, "_PyrightSession"] = {}
@@ -171,7 +170,9 @@ class _PyrightSession:
 
     def _request(self, method: str, params: dict[str, Any]) -> Any:
         request_id = next(self._request_ids)
-        self._send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
+        self._send(
+            {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
+        )
         while True:
             message = self._messages.get(timeout=10)
             if message is None:
@@ -206,7 +207,11 @@ def infer_type(
         session = _get_session(_project_root(document_path))
         session.open_document(document_path, source)
         return session.hover_type(document_path, line, col)
-    except Exception:
+    except Exception as e:
+        print(
+            "ERROR: Failed to infer type, please add autolang[cli] to dev dependence, "
+            "otherwise translation will not accurate:" + str(e)
+        )
         return None
 
 
