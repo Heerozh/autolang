@@ -5,7 +5,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from autolang.cli.static_analysis import suggest_placeholder_candidates
+from autolang.cli.static_analysis import analyze_static_cues, suggest_placeholder_candidates
 
 
 def test_suggest_placeholder_candidates_is_greedy_when_type_is_unknown():
@@ -113,10 +113,8 @@ def test_suggest_placeholder_candidates_treats_currency_type_as_number():
 
 
 # ---------------------------------------------------------------------------
-# Jedi-based inference tests (via analyze_static_cues end-to-end)
+# Type inference tests (via analyze_static_cues end-to-end)
 # ---------------------------------------------------------------------------
-
-from autolang.cli.static_analysis import analyze_static_cues
 
 
 def _extract_cue_text(source: str) -> str:
@@ -126,7 +124,7 @@ def _extract_cue_text(source: str) -> str:
     return cues[0].cue_text
 
 
-def test_jedi_infers_len_expression_as_number():
+def test_infers_len_expression_as_number():
     source = (
         "from autolang import tt\n"
         "items = [1, 2, 3]\n"
@@ -136,7 +134,7 @@ def test_jedi_infers_len_expression_as_number():
     assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
 
 
-def test_jedi_infers_variable_from_len_as_number():
+def test_infers_variable_from_len_as_number():
     source = (
         "from autolang import tt\n"
         "items = [1, 2, 3]\n"
@@ -147,7 +145,7 @@ def test_jedi_infers_variable_from_len_as_number():
     assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
 
 
-def test_jedi_infers_function_return_annotation():
+def test_infers_function_return_annotation():
     source = (
         "from autolang import tt\n"
         "def get_count() -> int:\n"
@@ -156,4 +154,55 @@ def test_jedi_infers_function_return_annotation():
         "tt(f'{count} items')\n"
     )
     cue_text = _extract_cue_text(source)
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
+
+
+def test_unpacked_tuple_return_propagates_element_annotation():
+    source = (
+        "from autolang import tt\n"
+        "def load_counts() -> tuple[str, int]:\n"
+        "    return 'done', 3\n"
+        "label, count = load_counts()\n"
+        "tt(f'{count} items')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "annotation: int" in cue_text.lower(), cue_text
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
+
+
+def test_starred_unpack_preserves_numeric_annotation_for_leading_target():
+    source = (
+        "from autolang import tt\n"
+        "def load_values() -> tuple[int, str, bool]:\n"
+        "    return 3, 'ok', True\n"
+        "count, *rest = load_values()\n"
+        "tt(f'{count} items')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "annotation: int" in cue_text.lower(), cue_text
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
+
+
+def test_starred_unpack_records_tuple_slice_annotation():
+    source = (
+        "from autolang import tt\n"
+        "def load_values() -> tuple[int, str, bool]:\n"
+        "    return 3, 'ok', True\n"
+        "count, *rest = load_values()\n"
+        "tt(f'{rest}')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "annotation: list[str | bool]" in cue_text.lower(), cue_text
+
+
+def test_starred_unpack_preserves_numeric_annotation_for_trailing_target():
+    source = (
+        "from autolang import tt\n"
+        "def load_values() -> tuple[str, bool, int]:\n"
+        "    return 'ok', True, 3\n"
+        "*rest, count = load_values()\n"
+        "tt(f'{count} items')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "annotation: int" in cue_text.lower(), cue_text
     assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text

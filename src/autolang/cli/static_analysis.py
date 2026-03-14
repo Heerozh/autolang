@@ -4,9 +4,8 @@ import ast
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-import jedi
-
 from ..source_templates import extract_template_from_call, render_formatted_value
+from .pyright_lsp import infer_type
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +21,7 @@ class PlaceholderCue:
     placeholder: str
     expression: str
     definition: DefinitionRecord | None
+    annotation: str | None
     allowed_candidates: tuple[str, ...]
     recommended: str
     confidence: str
@@ -56,12 +56,11 @@ class _Scope:
 
 class StaticCueAnalyzer(ast.NodeVisitor):
     def __init__(self, source: str, *, filename: str | None = None):
-        self.filename = filename
+        self.filename = filename or None
         self.templates: list[StaticTemplateCue] = []
         self._scope = _Scope()
         self._source = source
         self._source_lines = source.splitlines(keepends=True)
-        self._jedi_script: jedi.Script | None = None
 
     def visit_Module(self, node: ast.Module) -> None:
         self._visit_block(node.body)
@@ -340,11 +339,7 @@ class StaticCueAnalyzer(ast.NodeVisitor):
                         if cue.definition is not None
                         else 'not found in local static scope'
                     }",
-                    f"Annotation: {
-                        cue.definition.annotation
-                        if cue.definition and cue.definition.annotation
-                        else 'unknown'
-                    }",
+                    f"Annotation: {cue.annotation or 'unknown'}",
                     f"Allowed candidates: {', '.join(cue.allowed_candidates)}",
                     f"Recommended: {cue.recommended}",
                     f"Confidence: {cue.confidence}",
@@ -363,11 +358,7 @@ class StaticCueAnalyzer(ast.NodeVisitor):
             if isinstance(node.value, ast.Name)
             else None
         )
-        jedi_annotation = self._jedi_infer_annotation(node.value)
-        annotation = (
-            jedi_annotation
-            or (definition.annotation if definition is not None else None)
-        )
+        annotation = self._infer_annotation(node.value)
         allowed_candidates, recommended, confidence, notes = (
             suggest_placeholder_candidates(
                 expression=expression,
@@ -382,15 +373,32 @@ class StaticCueAnalyzer(ast.NodeVisitor):
             placeholder=placeholder,
             expression=expression,
             definition=definition,
+            annotation=annotation,
             allowed_candidates=allowed_candidates,
             recommended=recommended,
             confidence=confidence,
             notes=notes,
         )
 
-    def _jedi_infer_annotation(self, node: ast.expr) -> str | None:
+    def _infer_annotation(self, node: ast.expr) -> str | None:
+        pyright_annotation = self._infer_annotation_from_pyright(node)
+        if pyright_annotation is not None:
+            return pyright_annotation
+
         if isinstance(node, ast.Name):
-            return self._jedi_infer_at(node.lineno, node.col_offset)
+            definition = self._scope.lookup(node.id)
+            if definition is not None:
+                return definition.annotation
+        return None
+
+    def _infer_annotation_from_pyright(self, node: ast.expr) -> str | None:
+        if isinstance(node, ast.Name):
+            return infer_type(
+                source=self._source,
+                filename=self.filename,
+                line=node.lineno,
+                col=node.col_offset,
+            )
 
         expression = ast.unparse(node)
         line = node.lineno
@@ -399,36 +407,22 @@ class StaticCueAnalyzer(ast.NodeVisitor):
         modified_lines = list(self._source_lines)
         modified_lines.insert(line - 1, probe_line)
         modified_source = "".join(modified_lines)
-        try:
-            script = jedi.Script(modified_source, path=self.filename)
-            names = script.infer(line, len(indent))
-            if names:
-                return names[0].full_name or names[0].name
-        except Exception:
-            pass
-        return None
-
-    def _jedi_infer_at(self, line: int, col: int) -> str | None:
-        if self._jedi_script is None:
-            try:
-                self._jedi_script = jedi.Script(
-                    self._source, path=self.filename
-                )
-            except Exception:
-                return None
-        try:
-            names = self._jedi_script.infer(line, col)
-            if names:
-                return names[0].full_name or names[0].name
-        except Exception:
-            pass
-        return None
+        return infer_type(
+            source=modified_source,
+            filename=self._probe_filename(line),
+            line=line,
+            col=len(indent),
+        )
 
     def _detect_indent(self, line: int) -> str:
         if line <= 0 or line > len(self._source_lines):
             return ""
         text = self._source_lines[line - 1]
         return text[: len(text) - len(text.lstrip())]
+
+    def _probe_filename(self, line: int) -> str:
+        base = self.filename or "autolang_inline.py"
+        return f"{base}.autolang-probe-{line}.py"
 
 
 def analyze_static_cues(
@@ -530,6 +524,8 @@ def suggest_placeholder_candidates(
 def _extract_target_names(target: ast.AST) -> list[str]:
     if isinstance(target, ast.Name):
         return [target.id]
+    if isinstance(target, ast.Starred):
+        return _extract_target_names(target.value)
     if isinstance(target, (ast.Tuple, ast.List)):
         names: list[str] = []
         for element in target.elts:
