@@ -18,7 +18,7 @@ MISSING_TRANSLATION = "MISSING_TRANSLATION"
 
 
 def load_shared_cues(locale_dir: Path) -> dict[str, str]:
-    cue_dir = locale_dir.parent / f".{locale_dir.name}_cue"
+    cue_dir = build_cue_dir_path(locale_dir)
     merged_cues: dict[str, str] = {}
     for cue_path in sorted(cue_dir.glob("*.toml")):
         if not cue_path.is_file():
@@ -28,8 +28,12 @@ def load_shared_cues(locale_dir: Path) -> dict[str, str]:
     return merged_cues
 
 
+def build_cue_dir_path(locale_dir: Path) -> Path:
+    return locale_dir.parent / f".{locale_dir.name}_cue"
+
+
 def build_source_cue_path(locale_dir: Path, locale_name: str) -> Path:
-    cue_dir = locale_dir.parent / f".{locale_dir.name}_cue"
+    cue_dir = build_cue_dir_path(locale_dir)
     return cue_dir / f"{locale_name}.toml"
 
 
@@ -74,12 +78,24 @@ def locale_display_name(locale_name: str) -> str:
 
 
 def resolve_locale_dir_from_source(
-    source_path: Path, locale_dir: Path, template_files: set[Path]
+    source_path: Path, locale_dir: Path, template_files: set[Path] | None = None
 ) -> Path:
     if locale_dir.is_absolute():
         return locale_dir
 
-    return infer_package_root(source_path, template_files) / locale_dir
+    if not source_path.exists():
+        raise SystemExit(tt(f"Source path not found: {source_path}"))
+
+    if template_files is not None:
+        return infer_package_root(source_path, template_files) / locale_dir
+
+    inferred_root = _infer_package_root_from_source(source_path)
+    if inferred_root is not None:
+        return inferred_root / locale_dir
+
+    if source_path.is_file():
+        return source_path.parent.resolve() / locale_dir
+    return source_path.resolve() / locale_dir
 
 
 def infer_package_root(source_path: Path, template_files: set[Path]) -> Path:

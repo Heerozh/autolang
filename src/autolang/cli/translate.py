@@ -14,6 +14,8 @@ from pathlib import Path
 from ..toml_io import load_string_table, write_string_table
 from .common import (
     MISSING_TRANSLATION,
+    build_cue_dir_path,
+    build_source_cue_path,
     list_locale_files,
     load_shared_cues,
     locale_display_name,
@@ -21,7 +23,6 @@ from .common import (
     resolve_locale_dir_from_source,
 )
 from .i18n import tt
-from .sync import collect_source_templates
 
 TRANSLATION_SYSTEM_PROMPT = """You are a localization rewrite engine for python template strings with Babel CLDR formatting.
 
@@ -225,16 +226,11 @@ class OpenAICompatibleClient:
 def handle_translate_command(args: argparse.Namespace) -> int:
     source_path = Path(args.source)
     locale_dir_arg = Path(args.locale_dir)
-
-    _extracted_cues, _scanned_files, template_files = collect_source_templates(
-        source_path
-    )
-    locale_dir = resolve_locale_dir_from_source(
-        source_path, locale_dir_arg, template_files
-    )
+    locale_dir = resolve_locale_dir_from_source(source_path, locale_dir_arg)
     locale_files = list_locale_files(locale_dir)
     if not locale_files:
-        raise SystemExit(tt(f"No locale TOML files found in {locale_dir}."))
+        raise SystemExit(tt(f"No locale TOML files found in {locale_dir}"))
+    ensure_translate_cues_exist(source_path, locale_dir, locale_files)
 
     source_entries: dict[str, str] = {}
     for locale_path in locale_files:
@@ -332,6 +328,30 @@ def handle_translate_command(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def ensure_translate_cues_exist(
+    source_path: Path, locale_dir: Path, locale_files: list[Path]
+) -> None:
+    cue_dir = build_cue_dir_path(locale_dir)
+    cue_files = [path for path in sorted(cue_dir.glob("*.toml")) if path.is_file()]
+    if not cue_files:
+        raise SystemExit(build_missing_cue_error(source_path, locale_dir))
+
+    missing_cue_paths = [
+        build_source_cue_path(locale_dir, locale_path.stem)
+        for locale_path in locale_files
+        if not build_source_cue_path(locale_dir, locale_path.stem).is_file()
+    ]
+    if missing_cue_paths:
+        raise SystemExit(build_missing_cue_error(source_path, locale_dir))
+
+
+def build_missing_cue_error(source_path: Path, locale_dir: Path) -> str:
+    return tt(
+        f"Missing cue TOML files for {locale_dir}. "
+        f"Run `tt sync --source {source_path} --locale-dir {locale_dir}` first."
+    )
 
 
 def build_translation_tasks(
