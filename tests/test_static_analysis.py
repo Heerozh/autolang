@@ -110,3 +110,50 @@ def test_suggest_placeholder_candidates_treats_currency_type_as_number():
     assert recommended == "{amount}"
     assert confidence == "low"
     assert any("numeric" in note for note in notes)
+
+
+# ---------------------------------------------------------------------------
+# Jedi-based inference tests (via analyze_static_cues end-to-end)
+# ---------------------------------------------------------------------------
+
+from autolang.cli.static_analysis import analyze_static_cues
+
+
+def _extract_cue_text(source: str) -> str:
+    """Helper: analyze source and return the cue_text of the first template."""
+    cues = analyze_static_cues(source)
+    assert cues, "Expected at least one template cue"
+    return cues[0].cue_text
+
+
+def test_jedi_infers_len_expression_as_number():
+    source = (
+        "from autolang import tt\n"
+        "items = [1, 2, 3]\n"
+        "tt(f'{len(items)} items')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
+
+
+def test_jedi_infers_variable_from_len_as_number():
+    source = (
+        "from autolang import tt\n"
+        "items = [1, 2, 3]\n"
+        "count = len(items)\n"
+        "tt(f'{count} items')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
+
+
+def test_jedi_infers_function_return_annotation():
+    source = (
+        "from autolang import tt\n"
+        "def get_count() -> int:\n"
+        "    return 42\n"
+        "count = get_count()\n"
+        "tt(f'{count} items')\n"
+    )
+    cue_text = _extract_cue_text(source)
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text

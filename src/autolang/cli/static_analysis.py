@@ -4,6 +4,8 @@ import ast
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+import jedi
+
 from ..source_templates import extract_template_from_call, render_formatted_value
 
 
@@ -53,10 +55,13 @@ class _Scope:
 
 
 class StaticCueAnalyzer(ast.NodeVisitor):
-    def __init__(self, *, filename: str | None = None):
+    def __init__(self, source: str, *, filename: str | None = None):
         self.filename = filename
         self.templates: list[StaticTemplateCue] = []
         self._scope = _Scope()
+        self._source = source
+        self._source_lines = source.splitlines(keepends=True)
+        self._jedi_script: jedi.Script | None = None
 
     def visit_Module(self, node: ast.Module) -> None:
         self._visit_block(node.body)
@@ -358,11 +363,16 @@ class StaticCueAnalyzer(ast.NodeVisitor):
             if isinstance(node.value, ast.Name)
             else None
         )
+        jedi_annotation = self._jedi_infer_annotation(node.value)
+        annotation = (
+            jedi_annotation
+            or (definition.annotation if definition is not None else None)
+        )
         allowed_candidates, recommended, confidence, notes = (
             suggest_placeholder_candidates(
                 expression=expression,
                 placeholder=placeholder,
-                annotation=definition.annotation if definition is not None else None,
+                annotation=annotation,
                 definition_source=definition.source if definition is not None else None,
                 has_conversion=node.conversion >= 0,
                 has_format_spec=isinstance(node.format_spec, ast.JoinedStr),
@@ -378,12 +388,54 @@ class StaticCueAnalyzer(ast.NodeVisitor):
             notes=notes,
         )
 
+    def _jedi_infer_annotation(self, node: ast.expr) -> str | None:
+        if isinstance(node, ast.Name):
+            return self._jedi_infer_at(node.lineno, node.col_offset)
+
+        expression = ast.unparse(node)
+        line = node.lineno
+        indent = self._detect_indent(line)
+        probe_line = f"{indent}__autolang_probe__ = {expression}\n"
+        modified_lines = list(self._source_lines)
+        modified_lines.insert(line - 1, probe_line)
+        modified_source = "".join(modified_lines)
+        try:
+            script = jedi.Script(modified_source, path=self.filename)
+            names = script.infer(line, len(indent))
+            if names:
+                return names[0].full_name or names[0].name
+        except Exception:
+            pass
+        return None
+
+    def _jedi_infer_at(self, line: int, col: int) -> str | None:
+        if self._jedi_script is None:
+            try:
+                self._jedi_script = jedi.Script(
+                    self._source, path=self.filename
+                )
+            except Exception:
+                return None
+        try:
+            names = self._jedi_script.infer(line, col)
+            if names:
+                return names[0].full_name or names[0].name
+        except Exception:
+            pass
+        return None
+
+    def _detect_indent(self, line: int) -> str:
+        if line <= 0 or line > len(self._source_lines):
+            return ""
+        text = self._source_lines[line - 1]
+        return text[: len(text) - len(text.lstrip())]
+
 
 def analyze_static_cues(
     source: str, *, filename: str | None = None
 ) -> list[StaticTemplateCue]:
     module = ast.parse(source)
-    analyzer = StaticCueAnalyzer(filename=filename)
+    analyzer = StaticCueAnalyzer(source, filename=filename)
     analyzer.visit(module)
     return analyzer.templates
 

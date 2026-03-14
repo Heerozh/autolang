@@ -31,6 +31,7 @@ source = { editable = "." }
 dependencies = [
     { name = "babel" },
     { name = "executing" },
+    { name = "jedi" },
 ]
 
 [package.dev-dependencies]
@@ -46,6 +47,7 @@ dev = [
 requires-dist = [
     { name = "babel", specifier = ">=2.18.0" },
     { name = "executing", specifier = ">=2.2.1" },
+    { name = "jedi", specifier = ">=0.19.2" },
 ]
 
 [package.metadata.requires-dev]
