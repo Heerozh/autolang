@@ -3,7 +3,9 @@ from __future__ import annotations
 import ast
 
 
-def extract_template_from_call(node: ast.AST | None) -> tuple[str | None, tuple[str, ...]]:
+def extract_template_from_call(
+    node: ast.AST | None,
+) -> tuple[str | None, tuple[str, ...]]:
     if not isinstance(node, ast.Call) or not node.args:
         return None, ()
 
@@ -57,4 +59,7 @@ def render_formatted_value(node: ast.FormattedValue) -> tuple[str, tuple[str, ..
         rendered_spec, nested_expressions = render_joined_str(node.format_spec)
         format_spec = f":{rendered_spec}"
 
-    return f"{{{expression}{conversion}{format_spec}}}", (expression, *nested_expressions)
+    return f"{{{expression}{conversion}{format_spec}}}", (
+        expression,
+        *nested_expressions,
+    )

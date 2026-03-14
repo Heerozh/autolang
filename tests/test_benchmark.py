@@ -39,15 +39,20 @@ def test_hot_path_performance_guarantee(benchmark, setup_translator):
     item_count = 50
 
     # Fire off cold start
-    setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
+    setup_translator.translate(
+        f"【Translated】 User {user} has completed {item_count} items."
+    )
 
     def approach_autolang():
         # Using _() directly relies on inspecting frame, so there's minor overhead
         # but it should securely beat baseline by evaluating the byte code
-        return setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
+        return setup_translator.translate(
+            f"【Translated】 User {user} has completed {item_count} items."
+        )
 
     # Get current context for baseline
     frame = inspect.currentframe()
+    assert frame is not None
     f_globals = frame.f_globals
     f_locals = frame.f_locals
 
@@ -63,9 +68,13 @@ def test_our_package_timing(benchmark, setup_translator):
     benchmark.group = "hot-path"
     user = "Alice"
     item_count = 50
-    setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
+    setup_translator.translate(
+        f"【Translated】 User {user} has completed {item_count} items."
+    )
 
     def wrapped_execute():
-        return setup_translator.translate(f"【Translated】 User {user} has completed {item_count} items.")
+        return setup_translator.translate(
+            f"【Translated】 User {user} has completed {item_count} items."
+        )
 
     benchmark(wrapped_execute)

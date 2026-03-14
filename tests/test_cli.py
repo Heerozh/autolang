@@ -49,9 +49,7 @@ class InvalidPlaceholderClient:
 
     def translate_batch(self, request):
         item = request.items[0]
-        return {
-            item.id: cli.TranslationResult(id=item.id, text="Hola {other}")
-        }
+        return {item.id: cli.TranslationResult(id=item.id, text="Hola {other}")}
 
 
 def test_cli_modules_share_the_same_tt_wrapper():
@@ -85,23 +83,19 @@ def test_tt_translate_uses_batches_and_cues(monkeypatch, tmp_path):
     locale_dir.mkdir()
     cue_dir.mkdir()
     (locale_dir / "en.toml").write_text(
-        '"Hello {name}" = "Hello {name}"\n'
-        '"Goodbye" = "Goodbye"\n',
+        '"Hello {name}" = "Hello {name}"\n"Goodbye" = "Goodbye"\n',
         encoding="utf-8",
     )
     (locale_dir / "es.toml").write_text(
-        '"Goodbye" = "Adiós"\n'
-        '"Hello {name}" = "MISSING_TRANSLATION"\n',
+        '"Goodbye" = "Adiós"\n"Hello {name}" = "MISSING_TRANSLATION"\n',
         encoding="utf-8",
     )
     (locale_dir / "fr.toml").write_text(
-        '"Goodbye" = "MISSING_TRANSLATION"\n'
-        '"Hello {name}" = "MISSING_TRANSLATION"\n',
+        '"Goodbye" = "MISSING_TRANSLATION"\n"Hello {name}" = "MISSING_TRANSLATION"\n',
         encoding="utf-8",
     )
     (cue_dir / "en.toml").write_text(
-        '"Hello {name}" = "Hello Alice"\n'
-        '"Goodbye" = "Goodbye"\n',
+        '"Hello {name}" = "Hello Alice"\n"Goodbye" = "Goodbye"\n',
         encoding="utf-8",
     )
 
@@ -130,7 +124,11 @@ def test_tt_translate_uses_batches_and_cues(monkeypatch, tmp_path):
         request.items[0].cue_text == "Hello Alice"
         for request in FakeBatchClient.recorded_requests
     )
-    assert all(item.source_text != "MISSING_TRANSLATION" for request in FakeBatchClient.recorded_requests for item in request.items)
+    assert all(
+        item.source_text != "MISSING_TRANSLATION"
+        for request in FakeBatchClient.recorded_requests
+        for item in request.items
+    )
     assert load_string_table(str(locale_dir / "es.toml")) == {
         "Goodbye": "Adiós",
         "Hello {name}": "Hola {name}",
@@ -144,8 +142,12 @@ def test_tt_translate_uses_batches_and_cues(monkeypatch, tmp_path):
 def test_tt_translate_dry_run_does_not_write(monkeypatch, tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()
-    (locale_dir / "en.toml").write_text('"Hello {name}" = "Hello {name}"\n', encoding="utf-8")
-    (locale_dir / "es.toml").write_text('"Hello {name}" = "MISSING_TRANSLATION"\n', encoding="utf-8")
+    (locale_dir / "en.toml").write_text(
+        '"Hello {name}" = "Hello {name}"\n', encoding="utf-8"
+    )
+    (locale_dir / "es.toml").write_text(
+        '"Hello {name}" = "MISSING_TRANSLATION"\n', encoding="utf-8"
+    )
 
     FakeBatchClient.recorded_requests = []
     monkeypatch.setattr(cli, "OpenAICompatibleClient", FakeBatchClient)
@@ -189,13 +191,11 @@ def test_tt_sync_updates_all_locale_files_and_cues(tmp_path):
         encoding="utf-8",
     )
     (locale_dir / "en.toml").write_text(
-        '"Existing" = "Existing"\n'
-        '"Hello {name}" = "Hello {name}"\n',
+        '"Existing" = "Existing"\n"Hello {name}" = "Hello {name}"\n',
         encoding="utf-8",
     )
     (locale_dir / "es.toml").write_text(
-        '"Hello {name}" = "Hola {name}"\n'
-        '"Obsolete" = "Obsoleto"\n',
+        '"Hello {name}" = "Hola {name}"\n"Obsolete" = "Obsoleto"\n',
         encoding="utf-8",
     )
 
@@ -223,7 +223,10 @@ def test_tt_sync_updates_all_locale_files_and_cues(tmp_path):
     assert "Definition: name = 'Alice'" in cues["Hello {name}"]
     assert "Allowed candidates: {name}" in cues["Hello {name}"]
     assert "Template: Price: {price:.2f}" in cues["Price: {price:.2f}"]
-    assert "Source placeholder already uses an f-string format spec." in cues["Price: {price:.2f}"]
+    assert (
+        "Source placeholder already uses an f-string format spec."
+        in cues["Price: {price:.2f}"]
+    )
     es_cues = load_string_table(str(tmp_path / ".locales_cue" / "es.toml"))
     assert es_cues == cues
 
@@ -233,9 +236,7 @@ def test_tt_init_creates_locale_files_with_no_translation_markers(tmp_path):
     locale_dir = tmp_path / "locales"
     source_dir.mkdir()
     (source_dir / "app.py").write_text(
-        "print(tt('Hello'))\n"
-        "print(tt('Hola'))\n"
-        "print(tt('你好'))\n",
+        "print(tt('Hello'))\nprint(tt('Hola'))\nprint(tt('你好'))\n",
         encoding="utf-8",
     )
 
@@ -302,8 +303,7 @@ def test_tt_sync_resolves_relative_locale_dir_to_inferred_package_root(tmp_path)
     locale_dir.mkdir()
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
     (package_dir / "app.py").write_text(
-        "print(tt('Hello'))\n"
-        "print(tt('Price'))\n",
+        "print(tt('Hello'))\nprint(tt('Price'))\n",
         encoding="utf-8",
     )
     (locale_dir / "en.toml").write_text(
@@ -336,8 +336,7 @@ def test_tt_sync_dry_run_does_not_write(tmp_path):
     locale_dir.mkdir()
     (locale_dir / "en.toml").write_text("", encoding="utf-8")
     (source_dir / "app.py").write_text(
-        "name = 'Alice'\n"
-        "print(tt(f'Hello {name}'))\n",
+        "name = 'Alice'\nprint(tt(f'Hello {name}'))\n",
         encoding="utf-8",
     )
 
@@ -433,7 +432,9 @@ def test_tt_init_force_only_replaces_requested_locales(tmp_path):
     locale_dir.mkdir()
     cue_dir.mkdir()
     (source_dir / "app.py").write_text("print(tt('Hello'))\n", encoding="utf-8")
-    (locale_dir / "en.toml").write_text('"Hello" = "Existing English"\n', encoding="utf-8")
+    (locale_dir / "en.toml").write_text(
+        '"Hello" = "Existing English"\n', encoding="utf-8"
+    )
     (locale_dir / "zh.toml").write_text('"Hello" = "旧中文"\n', encoding="utf-8")
     (cue_dir / "en.toml").write_text('"Hello" = "existing cue"\n', encoding="utf-8")
     (cue_dir / "zh.toml").write_text('"Hello" = "旧线索"\n', encoding="utf-8")
@@ -463,7 +464,9 @@ def test_tt_init_force_only_replaces_requested_locales(tmp_path):
     }
     assert load_string_table(str(cue_dir / "en.toml")) == {"Hello": "existing cue"}
     assert load_string_table(str(cue_dir / "zh.toml")) == {"Hello": "旧线索"}
-    assert "Template: Hello" in load_string_table(str(cue_dir / "zh_Hans.toml"))["Hello"]
+    assert (
+        "Template: Hello" in load_string_table(str(cue_dir / "zh_Hans.toml"))["Hello"]
+    )
 
 
 def test_tt_init_preserves_script_and_territory_in_locale_file_names(tmp_path):
@@ -495,8 +498,12 @@ def test_tt_init_preserves_script_and_territory_in_locale_file_names(tmp_path):
 def test_tt_translate_rejects_invalid_placeholders(monkeypatch, tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()
-    (locale_dir / "en.toml").write_text('"Hello {name}" = "Hello {name}"\n', encoding="utf-8")
-    (locale_dir / "es.toml").write_text('"Hello {name}" = "MISSING_TRANSLATION"\n', encoding="utf-8")
+    (locale_dir / "en.toml").write_text(
+        '"Hello {name}" = "Hello {name}"\n', encoding="utf-8"
+    )
+    (locale_dir / "es.toml").write_text(
+        '"Hello {name}" = "MISSING_TRANSLATION"\n', encoding="utf-8"
+    )
 
     monkeypatch.setattr(cli, "OpenAICompatibleClient", InvalidPlaceholderClient)
 

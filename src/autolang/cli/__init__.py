@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         "translate",
         help=tt("Translate locale TOML files through an OpenAI-compatible API."),
     )
-    translate_parser.add_argument("--source", default=".")
+    translate_parser.add_argument("--source", default="./src/")
     translate_parser.add_argument("--locale-dir", default="locales")
     translate_parser.add_argument("--model", default=None)
     translate_parser.add_argument("--base-url", default=None)
@@ -56,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
         "sync",
         help=tt("Sync tt()-wrapped source templates across all locale TOML files."),
     )
-    sync_parser.add_argument("--source", default=".")
+    sync_parser.add_argument("--source", default="./src/")
     sync_parser.add_argument("--locale-dir", default="locales")
     sync_parser.add_argument("--dry-run", action="store_true")
     sync_parser.set_defaults(handler=handle_sync_command)
@@ -67,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Initialize locale TOML files from collected tt()-wrapped source templates."
         ),
     )
-    init_parser.add_argument("--source", default=".")
+    init_parser.add_argument("--source", default="./src/")
     init_parser.add_argument("--locale-dir", default="locales")
     init_parser.add_argument("--locales", nargs="+", required=True)
     init_parser.add_argument("--force", action="store_true")

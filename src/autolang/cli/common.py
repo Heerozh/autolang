@@ -37,8 +37,23 @@ def list_locale_files(locale_dir: Path) -> list[Path]:
     return sorted(path for path in locale_dir.glob("*.toml") if path.is_file())
 
 
+_warned_about_tests = False
+
+
 def should_recurse_into_directory(path: str) -> bool:
+    global _warned_about_tests
     name = Path(path).name
+    if name == "tests" and not _warned_about_tests:
+        import sys
+
+        print(
+            tt(
+                "Warning: A 'tests' directory was found during source scanning. "
+                "Did you select the wrong --source directory? "
+            ),
+            file=sys.stderr,
+        )
+        _warned_about_tests = True
     return not name.startswith(".") and name not in SKIPPED_SOURCE_DIR_NAMES
 
 
@@ -55,7 +70,7 @@ def normalize_locale_name(locale_name: str) -> str:
 
 def locale_display_name(locale_name: str) -> str:
     locale = Locale.parse(normalize_locale_name(locale_name))
-    return locale.get_display_name("en").title()
+    return str(locale.get_display_name("en")).title()
 
 
 def resolve_locale_dir_from_source(
