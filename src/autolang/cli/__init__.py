@@ -5,7 +5,7 @@ import argparse
 from . import init as _init
 from . import sync as _sync
 from . import translate as _translate
-from .i18n import cli_translator, tt
+from .i18n import tt
 
 BatchTranslationItem = _translate.BatchTranslationItem
 BatchTranslationOutcome = _translate.BatchTranslationOutcome
@@ -15,6 +15,7 @@ PlaceholderSpec = _translate.PlaceholderSpec
 TranslationResult = _translate.TranslationResult
 TranslationTask = _translate.TranslationTask
 validate_translated_text = _translate.validate_translated_text
+
 
 def handle_translate_command(args: argparse.Namespace) -> int:
     _translate.OpenAICompatibleClient = OpenAICompatibleClient
@@ -39,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         "translate",
         help=tt("Translate locale TOML files through an OpenAI-compatible API."),
     )
+    translate_parser.add_argument("--source", default=".")
     translate_parser.add_argument("--locale-dir", default="locales")
     translate_parser.add_argument("--model", default=None)
     translate_parser.add_argument("--base-url", default=None)

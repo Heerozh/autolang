@@ -18,8 +18,10 @@ from .common import (
     load_shared_cues,
     locale_display_name,
     normalize_locale_name,
+    resolve_locale_dir_from_source,
 )
 from .i18n import tt
+from .sync import collect_source_templates
 
 TRANSLATION_SYSTEM_PROMPT = """You are a localization rewrite engine for python template strings with Babel CLDR formatting.
 
@@ -78,7 +80,7 @@ Hard rules:
 12. Return JSON only.
 """
 
-PLACEHOLDER_PATTERN = re.compile(r"\{([^{}]+)\}")
+PLACEHOLDER_PATTERN = re.compile(r"\{([^{}]+)}")
 ALLOWED_FMT_FUNCS = {
     "date",
     "time",
@@ -189,7 +191,8 @@ class OpenAICompatibleClient:
         except urllib.error.URLError as exc:  # pragma: no cover - network error path
             raise RuntimeError(f"API request failed: {exc.reason}") from exc
 
-    def _extract_content(self, response: dict[str, object]) -> str:
+    @staticmethod
+    def _extract_content(response: dict[str, object]) -> str:
         choices = response.get("choices")
         if not isinstance(choices, list) or not choices:
             raise RuntimeError(f"Unexpected API response: {response}")
@@ -220,7 +223,15 @@ class OpenAICompatibleClient:
 
 
 def handle_translate_command(args: argparse.Namespace) -> int:
-    locale_dir = Path(args.locale_dir)
+    source_path = Path(args.source)
+    locale_dir_arg = Path(args.locale_dir)
+
+    _extracted_cues, _scanned_files, template_files = collect_source_templates(
+        source_path
+    )
+    locale_dir = resolve_locale_dir_from_source(
+        source_path, locale_dir_arg, template_files
+    )
     locale_files = list_locale_files(locale_dir)
     if not locale_files:
         raise SystemExit(tt(f"No locale TOML files found in {locale_dir}."))
