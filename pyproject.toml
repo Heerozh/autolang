@@ -7,7 +7,7 @@ name = "autolang"
 version = "0.1.0"
 description = "Transparent i18n for Python f-strings."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "babel>=2.18.0",
     "executing>=2.2.1",
