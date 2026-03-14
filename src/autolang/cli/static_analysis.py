@@ -52,12 +52,19 @@ class _Scope:
 
 
 class StaticCueAnalyzer(ast.NodeVisitor):
-    def __init__(self, source: str, *, filename: str | None = None):
+    def __init__(
+        self,
+        source: str,
+        *,
+        filename: str | None = None,
+        parent_map: dict[ast.AST, ast.AST] | None = None,
+    ):
         self.filename = filename or None
         self.templates: list[StaticTemplateCue] = []
         self._scope = _Scope()
         self._source = source
         self._source_lines = source.splitlines(keepends=True)
+        self._parent_map = parent_map or {}
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         with self._child_scope():
@@ -340,18 +347,32 @@ class StaticCueAnalyzer(ast.NodeVisitor):
             )
 
         expression = ast.unparse(node)
-        line = node.lineno
-        indent = self._detect_indent(line)
+        probe_line_number = self._probe_line_number(node)
+        indent = self._detect_indent(probe_line_number - 1)
         probe_line = f"{indent}__autolang_probe__ = {expression}\n"
         modified_lines = list(self._source_lines)
-        modified_lines.insert(line - 1, probe_line)
+        modified_lines.insert(probe_line_number - 1, probe_line)
         modified_source = "".join(modified_lines)
         return infer_type(
             source=modified_source,
-            filename=self._probe_filename(line),
-            line=line,
+            filename=self._probe_filename(probe_line_number),
+            line=probe_line_number,
             col=len(indent),
         )
+
+    def _probe_line_number(self, node: ast.AST) -> int:
+        statement = self._enclosing_statement(node)
+        end_line = getattr(statement, "end_lineno", None) or statement.lineno
+        return end_line + 1
+
+    def _enclosing_statement(self, node: ast.AST) -> ast.stmt:
+        current = node
+        while not isinstance(current, ast.stmt):
+            parent = self._parent_map.get(current)
+            if parent is None:
+                raise ValueError("Unable to locate enclosing statement")
+            current = parent
+        return current
 
     def _detect_indent(self, line: int) -> str:
         if line <= 0 or line > len(self._source_lines):
@@ -368,7 +389,12 @@ def analyze_static_cues(
     source: str, *, filename: str | None = None
 ) -> list[StaticTemplateCue]:
     module = ast.parse(source)
-    analyzer = StaticCueAnalyzer(source, filename=filename)
+    parent_map = {
+        child: parent
+        for parent in ast.walk(module)
+        for child in ast.iter_child_nodes(parent)
+    }
+    analyzer = StaticCueAnalyzer(source, filename=filename, parent_map=parent_map)
     analyzer.visit(module)
     return analyzer.templates
 

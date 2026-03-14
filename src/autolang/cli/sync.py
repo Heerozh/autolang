@@ -97,7 +97,7 @@ def collect_source_templates(
         str(source_path),
         method_map=[("**.py", TT_EXTRACTION_METHOD)],
         keywords=TT_EXTRACTION_KEYWORDS,
-        callback=build_extraction_callback(scanned_files),
+        callback=build_extraction_callback(scanned_files, source_path),
         directory_filter=should_recurse_into_directory,
     )
     cues: dict[str, str] = {}
@@ -125,10 +125,13 @@ def extract_templates_from_file(source_path: Path) -> dict[str, str]:
         return cues
 
 
-def build_extraction_callback(scanned_files: set[str]):
+def build_extraction_callback(scanned_files: set[str], source_root: Path):
     def callback(filename: str, method: str, options: dict[str, object]) -> None:
         del method
         scanned_files.add(filename)
-        options["filename"] = filename
+        path = Path(filename)
+        if not path.is_absolute():
+            path = (source_root / path).resolve()
+        options["filename"] = str(path)
 
     return callback

@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -75,6 +76,20 @@ def test_tt_sync_routes_errors_through_shared_tt(monkeypatch, tmp_path):
                 str(locale_dir),
             ]
         )
+
+
+def test_build_extraction_callback_normalizes_relative_filenames(tmp_path):
+    source_root = tmp_path / "src"
+    source_root.mkdir()
+    options: dict[str, object] = {}
+    scanned_files: set[str] = set()
+
+    callback = cli_sync.build_extraction_callback(scanned_files, source_root)
+    callback(os.path.join("pkg", "module.py"), "python", options)
+
+    assert options["filename"] == str(
+        (source_root / Path("pkg") / "module.py").resolve()
+    )
 
 
 def test_tt_translate_uses_batches_and_cues(monkeypatch, tmp_path):

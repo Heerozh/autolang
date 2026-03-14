@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -251,3 +252,24 @@ def test_augmented_assignment_records_definition_source():
     )
     cue_text = _extract_cue_text(source)
     assert "definition: count += 2" in cue_text.lower(), cue_text
+
+
+def test_multiline_tt_call_infers_len_expression_as_number_with_real_filename(
+    tmp_path,
+):
+    source = (
+        "from autolang import tt\n"
+        "items = [1, 2, 3]\n"
+        "def main() -> None:\n"
+        "    tt(\n"
+        "        f'{len(items)} items'\n"
+        "    )\n"
+    )
+    source_path = tmp_path / "sample.py"
+    source_path.write_text(source, encoding="utf-8")
+
+    cue_text = analyze_static_cues(
+        source_path.read_text(encoding="utf-8"), filename=str(source_path)
+    )[0].cue_text
+    assert "annotation: int" in cue_text.lower(), cue_text
+    assert "numeric" in cue_text.lower() or "number" in cue_text.lower(), cue_text
