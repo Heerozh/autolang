@@ -371,6 +371,70 @@ def test_tt_init_requires_force_when_locale_files_exist(tmp_path):
         )
 
 
+def test_tt_init_allows_adding_new_locale_when_other_locale_files_exist(tmp_path):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    source_dir.mkdir()
+    locale_dir.mkdir()
+    (source_dir / "app.py").write_text("print(tt('Hello'))\n", encoding="utf-8")
+    (locale_dir / "en.toml").write_text('"Hello" = "Hello"\n', encoding="utf-8")
+
+    exit_code = cli.main(
+        [
+            "init",
+            "--source",
+            str(source_dir),
+            "--locale-dir",
+            str(locale_dir),
+            "--locales",
+            "zh_hans",
+        ]
+    )
+
+    assert exit_code == 0
+    assert load_string_table(str(locale_dir / "en.toml")) == {"Hello": "Hello"}
+    assert load_string_table(str(locale_dir / "zh.toml")) == {
+        "Hello": "NO_TRANSLATION",
+    }
+
+
+def test_tt_init_force_only_replaces_requested_locales(tmp_path):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    cue_dir = tmp_path / ".locales_cue"
+    source_dir.mkdir()
+    locale_dir.mkdir()
+    cue_dir.mkdir()
+    (source_dir / "app.py").write_text("print(tt('Hello'))\n", encoding="utf-8")
+    (locale_dir / "en.toml").write_text('"Hello" = "Existing English"\n', encoding="utf-8")
+    (locale_dir / "zh.toml").write_text('"Hello" = "旧中文"\n', encoding="utf-8")
+    (cue_dir / "en.toml").write_text('"Hello" = "existing cue"\n', encoding="utf-8")
+    (cue_dir / "zh.toml").write_text('"Hello" = "旧线索"\n', encoding="utf-8")
+
+    exit_code = cli.main(
+        [
+            "init",
+            "--source",
+            str(source_dir),
+            "--locale-dir",
+            str(locale_dir),
+            "--locales",
+            "zh_hans",
+            "--force",
+        ]
+    )
+
+    assert exit_code == 0
+    assert load_string_table(str(locale_dir / "en.toml")) == {
+        "Hello": "Existing English",
+    }
+    assert load_string_table(str(locale_dir / "zh.toml")) == {
+        "Hello": "NO_TRANSLATION",
+    }
+    assert load_string_table(str(cue_dir / "en.toml")) == {"Hello": "existing cue"}
+    assert "Template: Hello" in load_string_table(str(cue_dir / "zh.toml"))["Hello"]
+
+
 def test_tt_translate_rejects_invalid_placeholders(monkeypatch, tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()

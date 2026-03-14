@@ -21,19 +21,30 @@ def handle_init_command(args: argparse.Namespace) -> int:
 
     extracted_cues, scanned_files, template_files = collect_source_templates(source_path)
     locale_dir = resolve_locale_dir_from_source(source_path, locale_dir_arg, template_files)
-    cue_dir = locale_dir.parent / f".{locale_dir.name}_cue"
-    existing_locale_files = list_locale_files(locale_dir)
-    if existing_locale_files and not args.force:
+    existing_locale_files = {
+        path.stem: path for path in list_locale_files(locale_dir)
+    }
+    requested_locale_files = {
+        locale_name: locale_dir / f"{locale_name}.toml" for locale_name in locale_names
+    }
+    conflicting_locale_names = [
+        locale_name
+        for locale_name in locale_names
+        if locale_name in existing_locale_files
+    ]
+    if conflicting_locale_names and not args.force:
         raise SystemExit(
-            f"Locale files already exist in {locale_dir}. Re-run with --force to replace them."
+            "Locale files already exist for "
+            f"{', '.join(conflicting_locale_names)} in {locale_dir}. "
+            "Re-run with --force to replace them."
         )
     entries = {message: NO_TRANSLATION for message in extracted_cues}
 
     if not args.dry_run:
         if args.force:
-            for path in existing_locale_files:
-                path.unlink()
-            for cue_path in sorted(cue_dir.glob("*.toml")):
+            for locale_name in conflicting_locale_names:
+                requested_locale_files[locale_name].unlink()
+                cue_path = build_source_cue_path(locale_dir, locale_name)
                 if cue_path.is_file():
                     cue_path.unlink()
 
