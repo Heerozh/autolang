@@ -19,8 +19,10 @@ validate_translated_text = _translate.validate_translated_text
 
 
 def handle_translate_command(args: argparse.Namespace) -> int:
-    _translate.OpenAICompatibleClient = OpenAICompatibleClient
-    return _translate.handle_translate_command(args)
+    return _translate.handle_translate_command(
+        args,
+        client_class=OpenAICompatibleClient,
+    )
 
 
 def handle_sync_command(args: argparse.Namespace) -> int:

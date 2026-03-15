@@ -18,9 +18,10 @@ from autolang.toml_io import load_string_table
 
 class FakeBatchClient:
     recorded_requests = []
+    recorded_extra_prompts = []
 
     def __init__(self, *args, **kwargs):
-        pass
+        type(self).recorded_extra_prompts.append(kwargs.get("extra_system_prompt"))
 
     def translate_batch(self, request):
         type(self).recorded_requests.append(request)
@@ -720,3 +721,120 @@ def test_parse_batch_response_requires_all_requested_locales():
             '{"translations":[{"locale":"es","text":"Hola"}]}',
             request,
         )
+
+
+def test_load_translation_prompt_prefers_locale_source_then_cwd(
+    tmp_path, monkeypatch
+):
+    locale_dir = tmp_path / "locales"
+    source_dir = tmp_path / "src"
+    cwd_dir = tmp_path / "cwd"
+    locale_dir.mkdir()
+    source_dir.mkdir()
+    cwd_dir.mkdir()
+
+    locale_prompt = locale_dir / "tt_prompt.md"
+    source_prompt = source_dir / "tt_prompt.md"
+    cwd_prompt = cwd_dir / "tt_prompt.md"
+
+    locale_prompt.write_text("locale prompt", encoding="utf-8")
+    source_prompt.write_text("source prompt", encoding="utf-8")
+    cwd_prompt.write_text("cwd prompt", encoding="utf-8")
+    monkeypatch.chdir(cwd_dir)
+
+    assert (
+        cli_translate.load_translation_prompt(source_dir, locale_dir) == "locale prompt"
+    )
+
+    locale_prompt.unlink()
+    assert (
+        cli_translate.load_translation_prompt(source_dir, locale_dir) == "source prompt"
+    )
+
+    source_prompt.unlink()
+    assert cli_translate.load_translation_prompt(source_dir, locale_dir) == "cwd prompt"
+
+
+def test_tt_translate_loads_prompt_file_for_client(monkeypatch, tmp_path):
+    locale_dir = tmp_path / "locales"
+    cue_dir = tmp_path / ".locales_cue"
+    source_dir = tmp_path / "src"
+    locale_dir.mkdir()
+    cue_dir.mkdir()
+    source_dir.mkdir()
+    (locale_dir / "tt_prompt.md").write_text("Use our product glossary.", encoding="utf-8")
+    (locale_dir / "en.toml").write_text('"Hello" = "Hello"\n', encoding="utf-8")
+    (locale_dir / "es.toml").write_text(
+        '"Hello" = "MISSING_TRANSLATION"\n', encoding="utf-8"
+    )
+    (cue_dir / "en.toml").write_text('"Hello" = "Greeting"\n', encoding="utf-8")
+    (cue_dir / "es.toml").write_text('"Hello" = "Greeting"\n', encoding="utf-8")
+
+    FakeBatchClient.recorded_requests = []
+    FakeBatchClient.recorded_extra_prompts = []
+    monkeypatch.setattr(cli, "OpenAICompatibleClient", FakeBatchClient)
+
+    exit_code = cli.main(
+        [
+            "translate",
+            "--source",
+            str(source_dir),
+            "--locale-dir",
+            str(locale_dir),
+            "--model",
+            "demo-model",
+            "--api-key",
+            "demo-key",
+        ]
+    )
+
+    assert exit_code == 0
+    assert FakeBatchClient.recorded_extra_prompts == ["Use our product glossary."]
+
+
+def test_openai_client_sends_extra_system_prompt():
+    client = cli_translate.OpenAICompatibleClient(
+        base_url="https://example.invalid/v1",
+        api_key="demo-key",
+        model="demo-model",
+        extra_system_prompt="Use our product glossary.",
+    )
+    request = cli_translate.BatchTranslationRequest(
+        key="Hello",
+        source_text="Hello",
+        cue_text="Greeting",
+        targets=(
+            cli_translate.BatchTranslationTarget(
+                locale="es",
+                target_language="Spanish",
+            ),
+        ),
+    )
+    captured_payload: dict[str, object] = {}
+
+    def fake_post_json(path, payload):
+        captured_payload["path"] = path
+        captured_payload["payload"] = payload
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"translations":[{"locale":"es","text":"Hola"}]}'
+                    }
+                }
+            ]
+        }
+
+    client._post_json = fake_post_json  # type: ignore[method-assign]
+
+    results = client.translate_batch(request)
+
+    payload = captured_payload["payload"]
+    assert captured_payload["path"] == "/chat/completions"
+    assert payload["messages"][0]["role"] == "system"
+    assert payload["messages"][1] == {
+        "role": "system",
+        "content": "Use our product glossary.",
+    }
+    assert payload["messages"][2]["role"] == "user"
+    assert results["es"].text == "Hola"

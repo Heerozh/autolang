@@ -81,12 +81,19 @@ class TransparentTranslator:
     def translate(self, text: str) -> str:
         frame = inspect.currentframe()
         caller = frame.f_back if frame is not None else None
+        search_frame = caller
         if caller is None:
             return text
 
         try:
-            return self._translate_from_frame(text, caller)
+            while search_frame is not None:
+                translated = self._translate_from_frame(text, search_frame)
+                if translated is not None:
+                    return translated
+                search_frame = search_frame.f_back
+            return text
         finally:
+            del search_frame
             del caller
             del frame
 
@@ -106,14 +113,14 @@ class TransparentTranslator:
     def _locale_file_path(self, locale_name: str) -> str:
         return os.path.join(self.locale_dir, f"{locale_name}.toml")
 
-    def _translate_from_frame(self, text: str, frame: FrameType) -> str:
+    def _translate_from_frame(self, text: str, frame: FrameType) -> str | None:
         cache_key = _make_cache_key(frame)
         entry = self._cache.get(cache_key)
 
         if entry is None:
             entry = self._build_cache_entry(frame, text)
             if entry is None:
-                return text
+                return None
             self._cache[cache_key] = entry
 
         return self._evaluate(entry.compiled_code, frame, text)

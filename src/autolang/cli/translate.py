@@ -24,6 +24,7 @@ from .common import (
 )
 from .i18n import tt
 
+TRANSLATION_PROMPT_FILE_NAME = "TT_PROMPT.md"
 TRANSLATION_SYSTEM_PROMPT = """You are a localization rewrite engine for python template strings with Babel CLDR formatting.
 
 Task:
@@ -149,11 +150,13 @@ class OpenAICompatibleClient:
         api_key: str,
         model: str,
         timeout: float = 60.0,
+        extra_system_prompt: str | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout = timeout
+        self.extra_system_prompt = extra_system_prompt
 
     def translate_batch(
         self, request: BatchTranslationRequest
@@ -161,10 +164,9 @@ class OpenAICompatibleClient:
         payload = {
             "model": self.model,
             "temperature": 0,
-            "messages": [
-                {"role": "system", "content": TRANSLATION_SYSTEM_PROMPT},
-                {"role": "user", "content": build_batch_user_prompt(request)},
-            ],
+            "messages": build_chat_messages(
+                request, extra_system_prompt=self.extra_system_prompt
+            ),
             "response_format": {"type": "json_object"},
         }
         response = self._post_json("/chat/completions", payload)
@@ -222,7 +224,11 @@ class OpenAICompatibleClient:
         raise RuntimeError(f"Unexpected API response: {response}")
 
 
-def handle_translate_command(args: argparse.Namespace) -> int:
+def handle_translate_command(
+    args: argparse.Namespace,
+    *,
+    client_class: type[OpenAICompatibleClient] = OpenAICompatibleClient,
+) -> int:
     source_path = Path(args.source)
     locale_dir_arg = Path(args.locale_dir)
     locale_dir = resolve_locale_dir_from_source(source_path, locale_dir_arg)
@@ -262,11 +268,12 @@ def handle_translate_command(args: argparse.Namespace) -> int:
 
     workers = max(1, args.workers)
 
-    client = OpenAICompatibleClient(
+    client = client_class(
         base_url=base_url,
         api_key=api_key,
         model=model,
         timeout=args.timeout,
+        extra_system_prompt=load_translation_prompt(source_path, locale_dir),
     )
 
     target_locales = [normalize_locale_name(path.stem) for path in locale_files]
@@ -468,6 +475,48 @@ def build_batch_user_prompt(request: BatchTranslationRequest) -> str:
         lines.append(f"- {target.locale} ({target.target_language})")
 
     return "\n".join(lines)
+
+
+def build_chat_messages(
+    request: BatchTranslationRequest,
+    *,
+    extra_system_prompt: str | None = None,
+) -> list[dict[str, str]]:
+    messages = [{"role": "system", "content": TRANSLATION_SYSTEM_PROMPT}]
+    if extra_system_prompt:
+        messages.append({"role": "system", "content": extra_system_prompt})
+    messages.append({"role": "user", "content": build_batch_user_prompt(request)})
+    return messages
+
+
+def load_translation_prompt(source_path: Path, locale_dir: Path) -> str | None:
+    for prompt_path in iter_translation_prompt_paths(source_path, locale_dir):
+        if not prompt_path.is_file():
+            continue
+        prompt_text = prompt_path.read_text(encoding="utf-8").strip()
+        if prompt_text:
+            return prompt_text
+    return None
+
+
+def iter_translation_prompt_paths(
+    source_path: Path, locale_dir: Path
+) -> tuple[Path, ...]:
+    source_dir = source_path if source_path.is_dir() else source_path.parent
+    candidates = (
+        locale_dir / TRANSLATION_PROMPT_FILE_NAME,
+        source_dir / TRANSLATION_PROMPT_FILE_NAME,
+        Path.cwd() / TRANSLATION_PROMPT_FILE_NAME,
+    )
+    unique_candidates: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved_candidate = candidate.resolve()
+        if resolved_candidate in seen:
+            continue
+        seen.add(resolved_candidate)
+        unique_candidates.append(resolved_candidate)
+    return tuple(unique_candidates)
 
 
 def parse_batch_response(

@@ -135,17 +135,19 @@ By default, the command:
 - discovers every `*.toml` file under the locale directory as a translation target
 - uses each TOML key as the source template text
 - reads cue text from `.<locale-dir>_cue/*.toml` when available
+- reads optional project instructions from `tt_prompt.md` if found under the locale
+  directory, then the source directory, then the current working directory
 - assumes keys may be mixed-language and lets the model decide per item whether
   translation is needed
 - only translates locale entries whose current value is `MISSING_TRANSLATION`
-- sends translation requests in batches and can execute multiple batches concurrently
+- sends one source key per model request and asks the model for every pending target
+  locale for that key; independent keys can still execute concurrently
 - validates returned JSON and placeholder compatibility before writing files
 
 Useful flags:
 
 - `--overwrite` to force re-translation of existing target values
 - `--dry-run` to preview work without writing files
-- `--batch-size 20` to control how many entries are sent in one model request
 - `--workers 4` to control concurrent batch requests
 - `--base-url` to point at any OpenAI-compatible endpoint
 

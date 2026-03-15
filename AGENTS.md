@@ -23,7 +23,7 @@ Use `uv` for local development.
 
 ## Coding Style & Naming Conventions
 
-Target Python 3.11+ and follow existing style in `src/autolang/translator.py`: 4-space
+Target Python 3.12+ and follow existing style in `src/autolang/translator.py`: 4-space
 indentation, snake_case for functions and variables, PascalCase for classes, and
 explicit type hints on public APIs. Keep modules small and standard-library-first where
 practical. Prefer dataclasses and narrow helper functions over large stateful blocks.

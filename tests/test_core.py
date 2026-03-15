@@ -68,6 +68,28 @@ def test_hot_path_caching(setup_translator):
     assert wrapped_call() == "Hola CachedUser"
 
 
+def test_translate_works_through_wrapper_function(setup_translator):
+    name = "WrappedUser"
+
+    def call_tt(text: str) -> str:
+        return setup_translator.translate(text)
+
+    assert call_tt(f"Hello {name}") == "Hola WrappedUser"
+
+
+def test_translate_works_inside_assert_expression(setup_translator):
+    name = "AssertUser"
+
+    assert setup_translator.translate(f"Hello {name}") == "Hola AssertUser"
+
+
+def test_translate_works_when_bound_to_local_tt(setup_translator):
+    tt = setup_translator.translate
+    name = "BoundUser"
+
+    assert tt(f"Hello {name}") == "Hola BoundUser"
+
+
 def test_reload_invalidates_instance_cache(tmp_path):
     locale_file = tmp_path / "es.toml"
     locale_file.write_text('"Hello {name}" = "Hola {name}"\n', encoding="utf-8")
