@@ -14,6 +14,7 @@ from .common import (
     should_recurse_into_directory,
 )
 from .i18n import tt
+from .placeholders import validate_translated_text
 
 TT_EXTRACTION_METHOD = "autolang.cli.extractors:extract_tt_python"
 TT_EXTRACTION_KEYWORDS = {"tt": None}
@@ -42,6 +43,7 @@ def handle_sync_command(args: argparse.Namespace) -> int:
         )
 
     total_added_entries = 0
+    total_invalid_placeholder_resets = 0
     total_removed_entries = 0
 
     synced_locale_entries: dict[Path, dict[str, str]] = {}
@@ -50,7 +52,18 @@ def handle_sync_command(args: argparse.Namespace) -> int:
         synced_entries: dict[str, str] = {}
         for message in unique_messages:
             if message in current_entries:
-                synced_entries[message] = current_entries[message]
+                current_translation = current_entries[message]
+                if current_translation != MISSING_TRANSLATION:
+                    try:
+                        validate_translated_text(
+                            message,
+                            current_translation,
+                            cue_text=extracted_cues.get(message, ""),
+                        )
+                    except RuntimeError:
+                        current_translation = MISSING_TRANSLATION
+                        total_invalid_placeholder_resets += 1
+                synced_entries[message] = current_translation
             else:
                 synced_entries[message] = MISSING_TRANSLATION
                 total_added_entries += 1
@@ -73,6 +86,7 @@ def handle_sync_command(args: argparse.Namespace) -> int:
         tt(
             f"Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), "
             f"tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, "
+            f"reset {total_invalid_placeholder_resets} invalid placeholder translation(s), "
             f"removed {total_removed_entries} stale entry/entries."
         )
     )

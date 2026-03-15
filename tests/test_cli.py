@@ -502,6 +502,47 @@ def test_tt_sync_updates_all_locale_files_and_cues(tmp_path):
     assert es_cues == cues
 
 
+def test_tt_sync_resets_invalid_placeholder_translation(tmp_path, capsys):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    source_dir.mkdir()
+    locale_dir.mkdir()
+    (source_dir / "app.py").write_text(
+        "name = 'Alice'\n"
+        "price = 12.345\n"
+        "print(tt(f'Hello {name}'))\n"
+        "print(tt(f'Price: {price}'))\n",
+        encoding="utf-8",
+    )
+    (locale_dir / "en.toml").write_text(
+        '"Hello {name}" = "Hello {name}"\n'
+        '"Price: {price}" = "Price: {price}"\n',
+        encoding="utf-8",
+    )
+    (locale_dir / "es.toml").write_text(
+        '"Hello {name}" = "Hola {name}"\n'
+        '"Price: {price}" = "Precio: {fmt.date(price)}"\n',
+        encoding="utf-8",
+    )
+
+    exit_code = cli.main(
+        [
+            "sync",
+            "--source",
+            str(tmp_path),
+            "--locale-dir",
+            str(locale_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert load_string_table(str(locale_dir / "es.toml")) == {
+        "Hello {name}": "Hola {name}",
+        "Price: {price}": "MISSING_TRANSLATION",
+    }
+    assert "reset 1 invalid placeholder translation(s)" in capsys.readouterr().out
+
+
 def test_tt_init_creates_locale_files_with_no_translation_markers(tmp_path):
     source_dir = tmp_path / "src"
     locale_dir = tmp_path / "locales"
@@ -798,6 +839,49 @@ def test_tt_translate_rejects_invalid_placeholders(monkeypatch, tmp_path):
                 "demo-key",
             ]
         )
+
+
+def test_shared_validate_translated_text_rejects_incompatible_wrapper():
+    from autolang.cli.placeholders import validate_translated_text
+
+    cue_text = (
+        "Location: app.py:1\n\n"
+        "Placeholder: {price}\n"
+        "Expression: price\n"
+        "Definition: price = 12.34\n"
+        "Annotation: float\n"
+        'Allowed candidates: {price}, {fmt.decimal(price)}, {fmt.number(price)}, {fmt.currency(price, "USD")}\n'
+        "Recommended: {price}\n"
+        "Confidence: medium"
+    )
+
+    with pytest.raises(RuntimeError, match="placeholder"):
+        validate_translated_text(
+            "Price: {price}",
+            "价格：{fmt.date(price)}",
+            cue_text=cue_text,
+        )
+
+
+def test_shared_validate_translated_text_allows_fmt_currency_wrapper():
+    from autolang.cli.placeholders import validate_translated_text
+
+    cue_text = (
+        "Location: app.py:1\n\n"
+        "Placeholder: {price}\n"
+        "Expression: price\n"
+        "Definition: price = 12.34\n"
+        "Annotation: float\n"
+        'Allowed candidates: {price}, {fmt.decimal(price)}, {fmt.number(price)}, {fmt.currency(price, "USD")}\n'
+        'Recommended: {fmt.currency(price, "USD")}\n'
+        "Confidence: medium"
+    )
+
+    validate_translated_text(
+        "Price: {price}",
+        '价格：{fmt.currency(price, "USD")}',
+        cue_text=cue_text,
+    )
 
 
 def test_validate_translated_text_allows_fmt_wrappers():

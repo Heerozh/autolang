@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import json
 import os
-import re
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
@@ -26,6 +24,10 @@ from .common import (
     resolve_locale_dir_from_source,
 )
 from .i18n import tt
+from . import placeholders as _placeholders
+
+PlaceholderSpec = _placeholders.PlaceholderSpec
+validate_translated_text = _placeholders.validate_translated_text
 
 TRANSLATION_PROMPT_FILE_NAME = "TT_PROMPT.md"
 TRANSLATION_SYSTEM_PROMPT = """You are a localization rewrite engine for python template strings with Babel CLDR formatting.
@@ -118,22 +120,6 @@ value and use `fmt` to compact it once again, and remove K Unit for other langua
 
 """
 
-PLACEHOLDER_PATTERN = re.compile(r"\{([^{}]+)}")
-ALLOWED_FMT_FUNCS = {
-    "date",
-    "time",
-    "datetime",
-    "decimal",
-    "number",
-    "currency",
-    "compact_decimal",
-    "compact_currency",
-    "percent",
-    "timedelta",
-}
-COMPACT_SCALE_VALUES = {1000, 1000000, 1000000000}
-
-
 @dataclass(frozen=True, slots=True)
 class TranslationTask:
     key: str
@@ -169,13 +155,6 @@ class TranslationResult:
 class BatchTranslationOutcome:
     key: str
     results: tuple[TranslationResult, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class PlaceholderSpec:
-    source_expression: str
-    normalized_expression: str
-    requires_exact_match: bool
 
 
 class OpenAICompatibleClient:
@@ -497,7 +476,11 @@ def validate_batch_results(
         )
 
     for result in results.values():
-        validate_translated_text(request.source_text, result.text)
+        validate_translated_text(
+            request.source_text,
+            result.text,
+            cue_text=request.cue_text,
+        )
 
     return results
 
@@ -606,7 +589,11 @@ def parse_batch_response(
                 f"Model response issues must be a list of strings: {content}"
             )
 
-        validate_translated_text(request.source_text, text)
+        validate_translated_text(
+            request.source_text,
+            text,
+            cue_text=request.cue_text,
+        )
 
         parsed_results[item_locale] = TranslationResult(
             locale=item_locale,
@@ -622,191 +609,6 @@ def parse_batch_response(
         )
 
     return parsed_results
-
-
-def validate_translated_text(source_text: str, translated_text: str) -> None:
-    source_specs = [
-        build_placeholder_spec(expr) for expr in extract_placeholders(source_text)
-    ]
-    translated_exprs = extract_placeholders(translated_text)
-
-    if len(source_specs) != len(translated_exprs):
-        raise RuntimeError(
-            "Translated placeholder count does not match source template: "
-            f"source={source_text!r} translated={translated_text!r}"
-        )
-
-    remaining = list(source_specs)
-    for translated_expr in translated_exprs:
-        matched_index = find_matching_placeholder_index(remaining, translated_expr)
-        if matched_index is None:
-            raise RuntimeError(
-                "Translated placeholder is not compatible with source template: "
-                f"source={source_text!r} translated={translated_text!r}"
-            )
-        remaining.pop(matched_index)
-
-
-def find_matching_placeholder_index(
-    source_specs: list[PlaceholderSpec],
-    translated_expression: str,
-) -> int | None:
-    for index, source_spec in enumerate(source_specs):
-        if placeholder_matches(source_spec, translated_expression):
-            return index
-    return None
-
-
-def placeholder_matches(
-    source_spec: PlaceholderSpec, translated_expression: str
-) -> bool:
-    translated_node = parse_expression(translated_expression)
-    if translated_node is None:
-        return False
-
-    translated_normalized = normalize_expression(translated_expression)
-    if translated_normalized is None:
-        return False
-
-    if source_spec.requires_exact_match:
-        return translated_normalized == source_spec.normalized_expression
-
-    if translated_normalized == source_spec.normalized_expression:
-        return True
-
-    return is_allowed_wrapper_for_source(
-        source_spec.normalized_expression, translated_node
-    )
-
-
-def build_placeholder_spec(expression: str) -> PlaceholderSpec:
-    normalized = normalize_expression(expression)
-    if normalized is None:
-        raise RuntimeError(f"Invalid source placeholder expression: {expression}")
-
-    return PlaceholderSpec(
-        source_expression=expression,
-        normalized_expression=normalized,
-        requires_exact_match=is_allowed_fmt_expression(expression),
-    )
-
-
-def is_allowed_wrapper_for_source(source_normalized: str, node: ast.AST) -> bool:
-    if not isinstance(node, ast.Call):
-        return False
-    if node.keywords:
-        return False
-
-    func_name = get_fmt_function_name(node.func)
-    if func_name not in ALLOWED_FMT_FUNCS:
-        return False
-
-    if func_name in {
-        "date",
-        "time",
-        "datetime",
-        "decimal",
-        "number",
-        "percent",
-        "timedelta",
-        "compact_decimal",
-    }:
-        if len(node.args) != 1:
-            return False
-    elif func_name == "currency":
-        if len(node.args) != 2 or not is_string_literal(node.args[1]):
-            return False
-    elif func_name == "compact_currency":
-        if len(node.args) != 2 or not is_string_literal(node.args[1]):
-            return False
-
-    if func_name == "percent":
-        return normalize_node(node.args[0]) == source_normalized or is_divided_by_100(
-            node.args[0], source_normalized
-        )
-
-    if func_name == "compact_decimal":
-        return normalize_node(
-            node.args[0]
-        ) == source_normalized or is_multiplied_compact(node.args[0], source_normalized)
-
-    if func_name == "compact_currency":
-        return normalize_node(
-            node.args[0]
-        ) == source_normalized or is_multiplied_compact(node.args[0], source_normalized)
-
-    return normalize_node(node.args[0]) == source_normalized
-
-
-def is_divided_by_100(node: ast.AST, source_normalized: str) -> bool:
-    if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.Div):
-        return False
-    return normalize_node(node.left) == source_normalized and is_numeric_constant(
-        node.right, 100
-    )
-
-
-def is_multiplied_compact(node: ast.AST, source_normalized: str) -> bool:
-    if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.Mult):
-        return False
-
-    left_normalized = normalize_node(node.left)
-    right_normalized = normalize_node(node.right)
-    if left_normalized == source_normalized and is_compact_scale_constant(node.right):
-        return True
-    if right_normalized == source_normalized and is_compact_scale_constant(node.left):
-        return True
-    return False
-
-
-def is_compact_scale_constant(node: ast.AST) -> bool:
-    return any(is_numeric_constant(node, value) for value in COMPACT_SCALE_VALUES)
-
-
-def is_numeric_constant(node: ast.AST, value: int) -> bool:
-    return isinstance(node, ast.Constant) and node.value == value
-
-
-def is_string_literal(node: ast.AST) -> bool:
-    return isinstance(node, ast.Constant) and isinstance(node.value, str)
-
-
-def is_allowed_fmt_expression(expression: str) -> bool:
-    node = parse_expression(expression)
-    if not isinstance(node, ast.Call):
-        return False
-    func_name = get_fmt_function_name(node.func)
-    return func_name in ALLOWED_FMT_FUNCS
-
-
-def get_fmt_function_name(node: ast.AST) -> str | None:
-    if not isinstance(node, ast.Attribute):
-        return None
-    if not isinstance(node.value, ast.Name) or node.value.id != "fmt":
-        return None
-    return node.attr
-
-
-def extract_placeholders(text: str) -> list[str]:
-    return [match.group(1).strip() for match in PLACEHOLDER_PATTERN.finditer(text)]
-
-
-def parse_expression(expression: str) -> ast.AST | None:
-    try:
-        return ast.parse(expression, mode="eval").body
-    except SyntaxError:
-        return None
-
-
-def normalize_expression(expression: str) -> str | None:
-    node = parse_expression(expression)
-    if node is None:
-        return None
-    return normalize_node(node)
-
-
-def normalize_node(node: ast.AST) -> str:
-    return ast.dump(node, annotate_fields=True, include_attributes=False)
 
 
 def should_translate_entry(current_text: str | None, overwrite: bool) -> bool:
