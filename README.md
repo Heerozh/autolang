@@ -35,14 +35,14 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
    `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
    to your CI/CD pipeline.
 
+All Done!
+
 ----
 
 1. 首先用 `tt()` 包裹你的所有文本。
 2. `tt init --locales en zh fr` 来初始化你项目的语言
 3. 在 ci/cd 流程中添加 `tt sycn` &&
    `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
-
-Done!
 
 ## Installation / 安装
 
@@ -65,31 +65,39 @@ from autolang import install
 translator = install(locale_str=None)
 tt = translator.translate
 
-# A local fmt object keeps the original f-string valid before translation happens.
-# 本地的 fmt 对象会在翻译发生前保持原始 f-string 依然有效。
+# global localization formatting tool
+# 贯穿全局的本地化Format工具
 fmt: babel.support.Format = translator.format
 
 name = "Alice"
 now = datetime(2026, 3, 11)
+follower = 12345
 print(tt(f"Hello {name}"))
 print(tt(f"Today is {fmt.date(now, format='short')}"))
+print(tt(f"Your have {follower / 1000}K followers"))
 
 # currency format
 # 货币格式
 currency = "CNY"
-rate = 7
-balance = 123.45 * rate
+balance = 864.15
 print(tt(f"Balance is {fmt.currency(balance, currency)}"))
 ```
 
-Example output:
+Execution: / 执行：
 
-示例输出：
+```bash
+uv run tt init --locales es
+uv run tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xx
+uv run readme.py
+```
+
+Example output: / 示例输出：
 
 ```text
 Hola Alice
-Hoy es 11/3/26
-El equilibrio es 864,15 CNY
+Today is 11/3/26
+Tienes 12 mil seguidores
+El saldo es 864,15 CNY
 ```
 
 ## Public API / 公共 API
