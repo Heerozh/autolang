@@ -325,3 +325,20 @@ def test_list_value_is_treated_as_text_like(tmp_path):
     assert "list" in cue_text.lower(), cue_text
     assert "allowed candidates: {items}" in cue_text.lower(), cue_text
     assert "text-like" in cue_text.lower(), cue_text
+
+
+def test_join_expression_in_raising_statement_is_treated_as_text_like():
+    source = (
+        "from autolang import tt\n"
+        "def fail(conflicting_locale_names: list[str], locale_dir: str) -> None:\n"
+        "    raise SystemExit(\n"
+        '        tt(f"Locale files already exist for {\', \'.join(conflicting_locale_names)} in {locale_dir}.")\n'
+        "    )\n"
+    )
+
+    cue_text = _extract_cue_text(source)
+    join_section = cue_text.split("\n\nPlaceholder: {locale_dir}")[0]
+    assert "annotation: unknown" not in join_section.lower(), cue_text
+    assert "annotation: str" in join_section.lower(), cue_text
+    assert "{fmt.date(', '.join(conflicting_locale_names))}" not in join_section
+    assert "text-like" in join_section.lower(), cue_text

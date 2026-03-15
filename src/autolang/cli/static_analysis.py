@@ -349,7 +349,7 @@ class StaticCueAnalyzer(ast.NodeVisitor):
 
         expression = ast.unparse(node)
         probe_line_number = self._probe_line_number(node)
-        indent = self._detect_indent(probe_line_number - 1)
+        indent = self._detect_indent(probe_line_number)
         probe_line = f"{indent}__autolang_probe__ = {expression}\n"
         modified_lines = list(self._source_lines)
         modified_lines.insert(probe_line_number - 1, probe_line)
@@ -363,8 +363,7 @@ class StaticCueAnalyzer(ast.NodeVisitor):
 
     def _probe_line_number(self, node: ast.AST) -> int:
         statement = self._enclosing_statement(node)
-        end_line = getattr(statement, "end_lineno", None) or statement.lineno
-        return end_line + 1
+        return statement.lineno
 
     def _enclosing_statement(self, node: ast.AST) -> ast.stmt:
         current = node
