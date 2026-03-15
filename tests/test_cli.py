@@ -351,10 +351,12 @@ def test_tt_sync_updates_all_locale_files_and_cues(tmp_path):
         "Price: {price:.2f}": "MISSING_TRANSLATION",
     }
     cues = load_string_table(str(tmp_path / ".locales_cue" / "en.toml"))
-    assert "Template: Hello {name}" in cues["Hello {name}"]
+    assert "Template: Hello {name}" not in cues["Hello {name}"]
+    assert "Location:" in cues["Hello {name}"]
     assert "Definition: name = 'Alice'" in cues["Hello {name}"]
     assert "Allowed candidates: {name}" in cues["Hello {name}"]
-    assert "Template: Price: {price:.2f}" in cues["Price: {price:.2f}"]
+    assert "Template: Price: {price:.2f}" not in cues["Price: {price:.2f}"]
+    assert "Location:" in cues["Price: {price:.2f}"]
     assert (
         "Source placeholder already uses an f-string format spec."
         in cues["Price: {price:.2f}"]
@@ -596,9 +598,9 @@ def test_tt_init_force_only_replaces_requested_locales(tmp_path):
     }
     assert load_string_table(str(cue_dir / "en.toml")) == {"Hello": "existing cue"}
     assert load_string_table(str(cue_dir / "zh.toml")) == {"Hello": "旧线索"}
-    assert (
-        "Template: Hello" in load_string_table(str(cue_dir / "zh_Hans.toml"))["Hello"]
-    )
+    cue_text = load_string_table(str(cue_dir / "zh_Hans.toml"))["Hello"]
+    assert "Template: Hello" not in cue_text
+    assert "Location:" in cue_text
 
 
 def test_tt_init_preserves_script_and_territory_in_locale_file_names(tmp_path):

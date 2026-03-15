@@ -258,7 +258,8 @@ class StaticCueAnalyzer(ast.NodeVisitor):
         location = (
             f"{self.filename}:{node.lineno}" if self.filename else f"line {node.lineno}"
         )
-        lines = [f"Template: {template}", f"Location: {location}"]
+        del template  # Unused for current
+        lines = [f"Location: {location}"]
 
         arg = node.args[0] if node.args else None
         if not isinstance(arg, ast.JoinedStr):
