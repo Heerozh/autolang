@@ -1,10 +1,10 @@
 [build-system]
-requires = ["uv_build >= 0.10.7, <0.11.0"]
-build-backend = "uv_build"
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "autolang"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Transparent i18n for Python f-strings."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -24,6 +24,12 @@ cli = [
 [project.scripts]
 tt = "autolang.cli:main"
 autolang = "autolang.cli:main"
+
+[tool.setuptools_scm]
+# 从 git tag 自动生成版本号
+version_scheme = "guess-next-dev"
+# for dependabot to work
+fallback_version = "0.0.0"
 
 [tool.setuptools.packages.find]
 where = ["src"]
