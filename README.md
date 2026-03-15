@@ -1,27 +1,23 @@
 # Autolang
 
-`Autolang` is an experimental i18n library for Python `f-string` call sites.
-It lets you bind a module-level `tt` function, write `tt(f"...")`, reconstruct the
-original template at runtime, look up a translated template from TOML, and re-evaluate
-the translated placeholders with Babel-aware formatting.
+`Autolang` 让你的 Python 项目自动支持多国语言，自动分析并收集信息，外加AI翻译，使你不需要任何维护和管理。
+只需要通过 `tt(f"repo stars is {var}K")` 把f-string包装下，就这样。
 
-## Status
+## 特性
 
-This project is under active development.
+- 全自动，免维护
+- 支持 f-string，且只允许 f-string。使用AST和LSP，记录f-string上下文用于翻译
+- 不限制文本语言，你的项目如果有多个国家地区的合作者，可以让他们使用自己的母语
+- 自动格式化，遇到需要本地化的格式，如小数点，单位，货币等，会提供候选让AI处理
 
-Stable today:
+## 工作流
 
-- `install(locale, locale_dir)` to create an isolated translator instance
-- `TransparentTranslator` for explicit instances
-- TOML-backed translation lookup
-- Babel `fmt.*` placeholder support inside translated templates
-- Per-instance call-site cache with `reload()` and `clear_cache()`
-- `tt init` and `tt sync` for locale template bootstrapping and synchronization
+1. 首先用 `tt()` 包裹你的所有文本。
+2. `tt init --locales en zh fr` 来初始化你项目的语言
+3. 在 ci/cd 流程中添加 `tt sycn` &&
+   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
 
-Planned:
-
-- AI-assisted translation generation
-- Better extraction and review workflows
+完成！
 
 ## Installation
 
@@ -31,43 +27,33 @@ uv add autolang && uv add --dev 'autolang[cli]'
 
 ## Quick Start
 
-Project layout:
-
-```text
-your_app/
-  app.py
-  locales/
-    es.toml
-```
-
-`locales/es.toml`
-
-```toml
-"Hello {name}" = "Hola {name}"
-"Today is {fmt.date(now, format='short')}" = "Hoy es {fmt.date(now, format='short')}"
-```
-
-`app.py`
-
 ```python
 from datetime import datetime
 
-from babel import Locale
-from babel.support import Format
+import babel
+import babel.support
 
 from autolang import install
 
-translator = install("es", "locales")
+# locale_str=None means use system language, or RFC3066 locale like `zh_Hans`
+translator = install(locale_str=None)
 tt = translator.translate
 
 # A local fmt object keeps the original f-string valid before translation happens.
-fmt = Format(Locale.parse("en"))
+fmt: babel.support.Format = translator.format
 
 name = "Alice"
 now = datetime(2026, 3, 11)
-
 print(tt(f"Hello {name}"))
 print(tt(f"Today is {fmt.date(now, format='short')}"))
+
+# currency format
+currency = "CNY"
+rate = 7
+balance = 123.45 * rate
+print(tt(f"Balance is {fmt.currency(balance, currency)}"))
+
+
 ```
 
 Example output:
@@ -75,6 +61,7 @@ Example output:
 ```text
 Hola Alice
 Hoy es 11/3/26
+El equilibrio es 864,15 CNY
 ```
 
 ## Public API
@@ -86,25 +73,12 @@ from autolang import (
 )
 ```
 
-- `install(locale_str, locale_dir="locales")` creates and returns a translator instance.
-- `TransparentTranslator(locale_str, locale_dir="locales")` creates an explicit
-  translator instance with its own cache.
+- `install(locale_dir="locales", locale_str=None)` creates and returns a translator
+  instance.
 - `translator.translate(text)` translates the current call site.
 - `translator.reload()` reloads the instance locale file and clears its cached call-site
   entries.
 - `translator.clear_cache()` clears the instance cache without reloading files.
-
-## Module Setup
-
-The recommended pattern is to initialize a module-level `tt` variable once and then call
-`tt(...)` everywhere in that module.
-
-```python
-from autolang import install
-
-translator = install("es", "locales")
-tt = translator.translate
-```
 
 ## CLI
 
@@ -116,9 +90,52 @@ uv add autolang
 uv add --dev 'autolang[cli]'
 ```
 
-Installing only `autolang` keeps the runtime library available without the optional
-`basedpyright` dependency. Adding the `cli` extra enables the richer placeholder
-analysis used by the developer tooling.
+CLI工具依赖 `basedpyright` LSP包，所以只添加到开发者环境中去。
+
+### 初始化
+
+Initialize locale TOML files.
+
+```bash
+tt init \
+  --source src \
+  --locale-dir locales \
+  --locales en es
+```
+
+By default, the command:
+
+- scans Python files under `--source`
+- creates one TOML file per requested locale
+- if file exists, skip
+- writes all keys as `"text" = "MISSING_TRANSLATION"`
+
+### 同步
+
+Sync collected templates across existing locale TOML files:
+
+```bash
+tt sync \
+  --source src \
+  --locale-dir locales
+```
+
+By default, the command:
+
+- scans Python files under `--source`
+- extracts `tt("...")` and `tt(f"...")` call sites through a Babel-compatible extractor
+- skips hidden and cache/build directories such as `.git`, `.venv`, and `__pycache__`
+- keeps existing translated values for keys that are still present in source
+- check is existing translated text are safe, it must either remain exactly as it
+  appears in the source code or be wrapped in `fmt.*()`, if not, reset it to
+  `MISSING_TRANSLATION`
+- writes missing keys as `"source" = "MISSING_TRANSLATION"`
+- removes stale keys that are no longer collected from source
+- run static analysis and write cue files under `.locales_cue/`
+- includes per-placeholder context such as the nearest assignment, parameter annotation,
+  allowed `fmt.*` candidates, and a recommended candidate when confidence is high
+
+### 翻译
 
 Translate all locale TOML files by filling entries still marked as `MISSING_TRANSLATION`
 through an OpenAI-compatible API:
@@ -136,63 +153,16 @@ By default, the command:
 - uses each TOML key as the source template text
 - reads cue text from `.<locale-dir>_cue/*.toml` when available
 - reads optional project instructions from `tt_prompt.md` if found under the locale
-  directory, then the source directory, then the current working directory
-- assumes keys may be mixed-language and lets the model decide per item whether
-  translation is needed
+  directory/source directory/current working directory, and add to system prompt
 - only translates locale entries whose current value is `MISSING_TRANSLATION`
-- sends one source key per model request and asks the model for every pending target
-  locale for that key; independent keys can still execute concurrently
-- validates returned JSON and placeholder compatibility before writing files
-
-Useful flags:
-
-- `--overwrite` to force re-translation of existing target values
-- `--dry-run` to preview work without writing files
-- `--workers 4` to control concurrent batch requests
-- `--base-url` to point at any OpenAI-compatible endpoint
+- sends one source key per model request
+- validates returned JSON and placeholder if safe before writing files
 
 The CLI also reads these environment variables:
 
 - `TT_API_KEY` or `OPENAI_API_KEY`
 - `TT_BASE_URL` or `OPENAI_BASE_URL`
 - `TT_MODEL` or `OPENAI_MODEL`
-
-Initialize locale TOML files from collected `tt(...)` templates:
-
-```bash
-tt init \
-  --source src \
-  --locale-dir locales \
-  --locales en es
-```
-
-By default, the command:
-
-- scans Python files under `--source`
-- extracts `tt("...")` and `tt(f"...")` call sites through a Babel-compatible extractor
-- skips hidden and cache/build directories such as `.git`, `.venv`, and `__pycache__`
-- creates one TOML file per requested locale
-- writes every collected key as `"source" = "MISSING_TRANSLATION"`
-- writes static cue entries into matching files under `.locales_cue/`
-- includes per-placeholder context such as the nearest assignment, parameter annotation,
-  allowed `fmt.*` candidates, and a recommended candidate when confidence is high
-
-Sync collected templates across existing locale TOML files:
-
-```bash
-tt sync \
-  --source src \
-  --locale-dir locales
-```
-
-By default, the command:
-
-- scans Python files under `--source`
-- requires at least one existing `*.toml` locale file under `--locale-dir`
-- keeps existing translated values for keys that are still present in source
-- writes missing keys as `"source" = "MISSING_TRANSLATION"`
-- removes stale keys that are no longer collected from source
-- rewrites cue files under `.locales_cue/` to match the current template set
 
 ## How It Works
 
@@ -208,22 +178,6 @@ At a high level:
    translator instance.
 6. Later calls from the same bytecode location reuse the cached compiled expression.
 
-## Constraints
-
-This is not a drop-in replacement for mature gettext tooling yet.
-
-- The main path is designed for direct `tt(f"...")` usage after binding
-  `tt = translator.translate`.
-- Library code should keep its own translator instance and bind its own `tt` function in
-  module scope.
-- Translation lookup is currently a flat TOML key-value map.
-- Static cue collection writes analysis data into a sibling hidden directory such as
-  `.locales_cue`.
-- If translated placeholder expressions are invalid or fail at evaluation time, the
-  library falls back to the original rendered text.
-- The library currently relies on runtime frame inspection and AST recovery, so unusual
-  execution environments may behave differently.
-
 ## Development
 
 Run tests:
@@ -238,8 +192,3 @@ Lint:
 uv run ruff check
 ```
 
-## Roadmap
-
-- AI-generated translations from source templates and static cues
-- Locale file generation and diffing
-- Better developer tooling around extraction, validation, and review
