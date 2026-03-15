@@ -156,6 +156,36 @@ def test_translator_loads_full_locale_with_fallback_chain(tmp_path):
     assert translator.get_translation("General") == "中文"
 
 
+def test_missing_translation_marker_falls_back_to_source_text(tmp_path):
+    (tmp_path / "es.toml").write_text(
+        '"Hello {name}" = "MISSING_TRANSLATION"\n',
+        encoding="utf-8",
+    )
+
+    translator = TransparentTranslator("es", str(tmp_path))
+    name = "Alice"
+
+    assert translator.get_translation("Hello {name}") == "Hello {name}"
+    assert translator.translate(f"Hello {name}") == "Hello Alice"
+
+
+def test_missing_translation_marker_does_not_override_fallback_translation(tmp_path):
+    (tmp_path / "zh.toml").write_text(
+        '"Hello {name}" = "中文 {name}"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "zh_Hans.toml").write_text(
+        '"Hello {name}" = "MISSING_TRANSLATION"\n',
+        encoding="utf-8",
+    )
+
+    translator = TransparentTranslator("zh_Hans", str(tmp_path))
+    name = "Alice"
+
+    assert translator.get_translation("Hello {name}") == "中文 {name}"
+    assert translator.translate(f"Hello {name}") == "中文 Alice"
+
+
 def test_f_string_format_spec_is_preserved_in_translation_key(tmp_path):
     (tmp_path / "es.toml").write_text(
         '"Price: {price:.2f}" = "Precio: {price:.2f}"\n',

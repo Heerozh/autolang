@@ -17,6 +17,7 @@ from .source_templates import extract_template_from_call
 from .toml_io import load_string_table
 
 _ENGLISH_LOCALE = Locale.parse("en")
+_MISSING_TRANSLATION = "MISSING_TRANSLATION"
 _LANGUAGE_NAME_TO_CODE = {
     " ".join(name.casefold().split()): code
     for code, name in _ENGLISH_LOCALE.languages.items()
@@ -73,7 +74,7 @@ class TransparentTranslator:
 
     def get_translation(self, source_template: str) -> str:
         translated = self.translations.get(source_template)
-        if isinstance(translated, str):
+        if isinstance(translated, str) and translated != _MISSING_TRANSLATION:
             return translated
         return source_template
 
@@ -92,7 +93,14 @@ class TransparentTranslator:
     def _load_translations(self) -> dict[str, str]:
         translations: dict[str, str] = {}
         for locale_name in _iter_locale_fallback_names(self.locale):
-            translations.update(load_string_table(self._locale_file_path(locale_name)))
+            locale_entries = load_string_table(self._locale_file_path(locale_name))
+            translations.update(
+                {
+                    key: value
+                    for key, value in locale_entries.items()
+                    if value != _MISSING_TRANSLATION
+                }
+            )
         return translations
 
     def _locale_file_path(self, locale_name: str) -> str:
