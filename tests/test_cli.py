@@ -8,12 +8,20 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
+from autolang import install
 from autolang import cli
 from autolang.cli import common as cli_common
 from autolang.cli import init as cli_init
 from autolang.cli import sync as cli_sync
 from autolang.cli import translate as cli_translate
 from autolang.toml_io import load_string_table
+
+
+def force_cli_messages_to_english(monkeypatch: pytest.MonkeyPatch) -> None:
+    locale_dir = Path(__file__).resolve().parents[1] / "src" / "autolang" / "locales"
+    english_tt = install(str(locale_dir), "en").translate
+    monkeypatch.setattr(cli_sync, "tt", english_tt, raising=False)
+    monkeypatch.setattr(cli_translate, "tt", english_tt, raising=False)
 
 
 class FakeBatchClient:
@@ -231,7 +239,9 @@ def test_tt_translate_does_not_collect_source_templates(monkeypatch, tmp_path):
     (cue_dir / "es.toml").write_text('"Hello" = "Greeting"\n', encoding="utf-8")
 
     def fail_if_called(source_path):
-        raise AssertionError(f"translate should not collect templates from {source_path}")
+        raise AssertionError(
+            f"translate should not collect templates from {source_path}"
+        )
 
     FakeBatchClient.recorded_requests = []
     monkeypatch.setattr(cli, "OpenAICompatibleClient", FakeBatchClient)
@@ -418,13 +428,14 @@ def test_create_translation_progress_uses_tqdm(monkeypatch):
     assert progress is not None
 
 
-def test_tt_translate_requires_sync_when_cues_are_missing(tmp_path):
+def test_tt_translate_requires_sync_when_cues_are_missing(monkeypatch, tmp_path):
     locale_dir = tmp_path / "locales"
     locale_dir.mkdir()
     (locale_dir / "en.toml").write_text('"Hello" = "Hello"\n', encoding="utf-8")
     (locale_dir / "es.toml").write_text(
         '"Hello" = "MISSING_TRANSLATION"\n', encoding="utf-8"
     )
+    force_cli_messages_to_english(monkeypatch)
 
     with pytest.raises(SystemExit, match="Run `tt sync"):
         cli.main(
@@ -502,6 +513,43 @@ def test_tt_sync_updates_all_locale_files_and_cues(tmp_path):
     assert es_cues == cues
 
 
+def test_tt_sync_rewrites_locale_and_cue_files_with_triple_quoted_values(tmp_path):
+    source_dir = tmp_path / "src"
+    locale_dir = tmp_path / "locales"
+    source_dir.mkdir()
+    locale_dir.mkdir()
+    (source_dir / "app.py").write_text(
+        "name = 'Alice'\nprint(tt(f'Hello {name}'))\n",
+        encoding="utf-8",
+    )
+    (locale_dir / "en.toml").write_text(
+        '"Hello {name}" = "Hello {name}"\n',
+        encoding="utf-8",
+    )
+
+    exit_code = cli.main(
+        [
+            "sync",
+            "--source",
+            str(tmp_path),
+            "--locale-dir",
+            str(locale_dir),
+        ]
+    )
+
+    assert exit_code == 0
+
+    locale_text = (locale_dir / "en.toml").read_text(encoding="utf-8")
+    cue_text = (tmp_path / ".locales_cue" / "en.toml").read_text(encoding="utf-8")
+
+    assert (
+        '"Hello {name}" = """\nHello {name}"""\n# --------------------\n' in locale_text
+    )
+    assert '"Hello {name}" = """\n' in cue_text
+    assert "# --------------------\n" in cue_text
+    assert "\\n" not in cue_text
+
+
 def test_tt_sync_resets_invalid_placeholder_translation(tmp_path, capsys):
     source_dir = tmp_path / "src"
     locale_dir = tmp_path / "locales"
@@ -515,8 +563,7 @@ def test_tt_sync_resets_invalid_placeholder_translation(tmp_path, capsys):
         encoding="utf-8",
     )
     (locale_dir / "en.toml").write_text(
-        '"Hello {name}" = "Hello {name}"\n'
-        '"Price: {price}" = "Price: {price}"\n',
+        '"Hello {name}" = "Hello {name}"\n"Price: {price}" = "Price: {price}"\n',
         encoding="utf-8",
     )
     (locale_dir / "es.toml").write_text(
@@ -668,12 +715,13 @@ def test_tt_sync_dry_run_does_not_write(tmp_path):
     assert load_string_table(str(tmp_path / ".locales_cue" / "en.toml")) == {}
 
 
-def test_tt_sync_requires_init_when_no_locale_files_exist(tmp_path):
+def test_tt_sync_requires_init_when_no_locale_files_exist(monkeypatch, tmp_path):
     source_dir = tmp_path / "src"
     locale_dir = tmp_path / "locales"
     source_dir.mkdir()
     locale_dir.mkdir()
     (source_dir / "app.py").write_text("print(tt('Hello'))\n", encoding="utf-8")
+    force_cli_messages_to_english(monkeypatch)
 
     with pytest.raises(SystemExit, match="Run `tt init"):
         cli.main(
@@ -946,9 +994,7 @@ def test_parse_batch_response_requires_all_requested_locales():
         )
 
 
-def test_load_translation_prompt_prefers_locale_source_then_cwd(
-    tmp_path, monkeypatch
-):
+def test_load_translation_prompt_prefers_locale_source_then_cwd(tmp_path, monkeypatch):
     locale_dir = tmp_path / "locales"
     source_dir = tmp_path / "src"
     cwd_dir = tmp_path / "cwd"
@@ -956,9 +1002,9 @@ def test_load_translation_prompt_prefers_locale_source_then_cwd(
     source_dir.mkdir()
     cwd_dir.mkdir()
 
-    locale_prompt = locale_dir / "tt_prompt.md"
-    source_prompt = source_dir / "tt_prompt.md"
-    cwd_prompt = cwd_dir / "tt_prompt.md"
+    locale_prompt = locale_dir / "TT_PROMPT.md"
+    source_prompt = source_dir / "TT_PROMPT.md"
+    cwd_prompt = cwd_dir / "TT_PROMPT.md"
 
     locale_prompt.write_text("locale prompt", encoding="utf-8")
     source_prompt.write_text("source prompt", encoding="utf-8")
@@ -985,7 +1031,9 @@ def test_tt_translate_loads_prompt_file_for_client(monkeypatch, tmp_path):
     locale_dir.mkdir()
     cue_dir.mkdir()
     source_dir.mkdir()
-    (locale_dir / "tt_prompt.md").write_text("Use our product glossary.", encoding="utf-8")
+    (locale_dir / "TT_PROMPT.md").write_text(
+        "Use our product glossary.", encoding="utf-8"
+    )
     (locale_dir / "en.toml").write_text('"Hello" = "Hello"\n', encoding="utf-8")
     (locale_dir / "es.toml").write_text(
         '"Hello" = "MISSING_TRANSLATION"\n', encoding="utf-8"

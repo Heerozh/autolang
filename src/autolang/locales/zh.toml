@@ -1,20 +1,60 @@
-"Autolang developer tools." = "Autolang 开发者工具"
-"Could not infer a unique package root from --source. Pass an absolute --locale-dir or narrow --source." = "无法从 --source 推断出唯一的包根目录。请传递绝对 --locale-dir 或缩小 --source。"
-"Create new TOML files for specified locales, and collect tt()-wrapped text templates." = "为指定的语言创建新的TOML文件，并收集tt()包装的文本模板。"
-"Locale files already exist for {', '.join(conflicting_locale_names)} in {locale_dir}. Re-run with --force to replace them." = "语言环境文件已存在于 {locale_dir} 中的 {', '.join(conflicting_locale_names)}。使用 --force 重新运行以替换它们。"
-"Missing API key. Pass --api-key or set TT_API_KEY/OPENAI_API_KEY." = "缺少API密钥。请传递--api-key或设置TT_API_KEY/OPENAI_API_KEY。"
-"Missing cue TOML files for {locale_dir}. Run `tt sync --source {source_path} --locale-dir {locale_dir}` first." = "缺少 {locale_dir} 的提示 TOML 文件。请先运行 `tt sync --source {source_path} --locale-dir {locale_dir}`。"
-"Missing model. Pass --model or set TT_MODEL/OPENAI_MODEL." = "缺少模型。传递 --model 或设置 TT_MODEL/OPENAI_MODEL。"
-"Multiple package roots matched the extracted templates. Pass an absolute --locale-dir or narrow --source." = "多个包根目录与提取的模板匹配。请传递绝对路径的 --locale-dir 或缩小 --source。"
-"No locale TOML files found in {locale_dir}" = "在 {locale_dir} 中未找到语言环境 TOML 文件"
-"No locale TOML files found in {locale_dir}. Run `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...` first." = "在 {locale_dir} 中未找到语言 TOML 文件。请先运行 `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...`。"
-"No translatable template keys found in {locale_dir}." = "在 {locale_dir} 中未找到可翻译的模板键。"
-"Scan project, Sync the tt()-wrapped text, to all locale TOML files." = "扫描项目，同步 tt() 包裹的文本，到所有本地化 TOML 文件。"
-"Scanned {scanned_files} Python file(s), initialized {len(locale_names)} locale file(s), created {len(entries)} template entry/entries." = "扫描了{fmt.decimal(scanned_files)}个Python文件，初始化了{fmt.decimal(len(locale_names))}个区域设置文件，创建了{fmt.decimal(len(entries))}个模板条目。"
-"Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, removed {total_removed_entries} stale entry/entries." = "扫描了{fmt.number(scanned_files)}个Python文件，同步了{fmt.number(len(locale_files))}个区域文件，跟踪了{fmt.number(len(unique_messages))}个模板，添加了{fmt.number(total_added_entries)}个缺失条目，移除了{fmt.number(total_removed_entries)}个陈旧条目。"
-"Source path must be a Python file or directory: {source_path}" = "源路径必须是 Python 文件或目录: {source_path}"
-"Source path not found: {source_path}" = "未找到源路径: {source_path}"
-"Translate the missing text in all locale TOML language files through an OpenAI-compatible API." = "通过OpenAI兼容API翻译所有区域TOML语言文件中的缺失文本。"
-"Updated {len(target_locales)} locale file(s), translated 0 entry/entries." = "更新了 {fmt.number(len(target_locales))} 个区域设置文件，翻译了 0 个条目。"
-"Updated {len(target_locales)} locale file(s), translated {total_translated} entry/entries." = "更新了 {fmt.number(len(target_locales))} 个区域文件，翻译了 {fmt.number(total_translated)} 个条目。"
-"Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = "警告：在源代码扫描期间发现了一个 'tests' 目录。您是否选择了错误的 --source 目录？"
+"Autolang developer tools." = """
+Autolang 开发者工具"""
+# --------------------
+"Could not infer a unique package root from --source. Pass an absolute --locale-dir or narrow --source." = """
+无法从 --source 推断出唯一的包根目录。请传递绝对 --locale-dir 或缩小 --source。"""
+# --------------------
+"Create new TOML files for specified locales, and collect tt()-wrapped text templates." = """
+为指定的语言创建新的TOML文件，并收集tt()包装的文本模板。"""
+# --------------------
+"Locale files already exist for {', '.join(conflicting_locale_names)} in {locale_dir}. Re-run with --force to replace them." = """
+语言环境文件已存在于 {locale_dir} 中的 {', '.join(conflicting_locale_names)}。使用 --force 重新运行以替换它们。"""
+# --------------------
+"Missing API key. Pass --api-key or set TT_API_KEY/OPENAI_API_KEY." = """
+缺少API密钥。请传递--api-key或设置TT_API_KEY/OPENAI_API_KEY。"""
+# --------------------
+"Missing cue TOML files for {locale_dir}. Run `tt sync --source {source_path} --locale-dir {locale_dir}` first." = """
+缺少 {locale_dir} 的提示 TOML 文件。请先运行 `tt sync --source {source_path} --locale-dir {locale_dir}`。"""
+# --------------------
+"Missing model. Pass --model or set TT_MODEL/OPENAI_MODEL." = """
+缺少模型。传递 --model 或设置 TT_MODEL/OPENAI_MODEL。"""
+# --------------------
+"Multiple package roots matched the extracted templates. Pass an absolute --locale-dir or narrow --source." = """
+多个包根目录与提取的模板匹配。请传递绝对路径的 --locale-dir 或缩小 --source。"""
+# --------------------
+"No locale TOML files found in {locale_dir}" = """
+在 {locale_dir} 中未找到语言环境 TOML 文件"""
+# --------------------
+"No locale TOML files found in {locale_dir}. Run `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...` first." = """
+在 {locale_dir} 中未找到语言 TOML 文件。请先运行 `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...`。"""
+# --------------------
+"No translatable template keys found in {locale_dir}." = """
+在 {locale_dir} 中未找到可翻译的模板键。"""
+# --------------------
+"Scan project, Sync the tt()-wrapped text, to all locale TOML files." = """
+扫描项目，同步 tt() 包裹的文本，到所有本地化 TOML 文件。"""
+# --------------------
+"Scanned {scanned_files} Python file(s), initialized {len(locale_names)} locale file(s), created {len(entries)} template entry/entries." = """
+扫描了{fmt.decimal(scanned_files)}个Python文件，初始化了{fmt.decimal(len(locale_names))}个区域设置文件，创建了{fmt.decimal(len(entries))}个模板条目。"""
+# --------------------
+"Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
+MISSING_TRANSLATION"""
+# --------------------
+"Source path must be a Python file or directory: {source_path}" = """
+源路径必须是 Python 文件或目录: {source_path}"""
+# --------------------
+"Source path not found: {source_path}" = """
+未找到源路径: {source_path}"""
+# --------------------
+"Translate the missing text in all locale TOML language files through an OpenAI-compatible API." = """
+通过OpenAI兼容API翻译所有区域TOML语言文件中的缺失文本。"""
+# --------------------
+"Updated {len(target_locales)} locale file(s), translated 0 entry/entries." = """
+更新了 {fmt.number(len(target_locales))} 个区域设置文件，翻译了 0 个条目。"""
+# --------------------
+"Updated {len(target_locales)} locale file(s), translated {total_translated} entry/entries." = """
+更新了 {fmt.number(len(target_locales))} 个区域文件，翻译了 {fmt.number(total_translated)} 个条目。"""
+# --------------------
+"Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
+警告：在源代码扫描期间发现了一个 'tests' 目录。您是否选择了错误的 --source 目录？"""
+# --------------------

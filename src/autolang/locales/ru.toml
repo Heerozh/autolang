@@ -1,20 +1,60 @@
-"Autolang developer tools." = "Инструменты разработчика Autolang"
-"Could not infer a unique package root from --source. Pass an absolute --locale-dir or narrow --source." = "Не удалось определить уникальный корень пакета из --source. Укажите абсолютный --locale-dir или сузьте --source."
-"Create new TOML files for specified locales, and collect tt()-wrapped text templates." = "Создать новые файлы TOML для указанных языков и собрать текстовые шаблоны, обёрнутые в tt()."
-"Locale files already exist for {', '.join(conflicting_locale_names)} in {locale_dir}. Re-run with --force to replace them." = "Файлы локалей уже существуют для {', '.join(conflicting_locale_names)} в {locale_dir}. Повторно запустите с --force, чтобы заменить их."
-"Missing API key. Pass --api-key or set TT_API_KEY/OPENAI_API_KEY." = "Отсутствует ключ API. Передайте --api-key или установите TT_API_KEY/OPENAI_API_KEY."
-"Missing cue TOML files for {locale_dir}. Run `tt sync --source {source_path} --locale-dir {locale_dir}` first." = "Отсутствуют TOML-файлы подсказок для {locale_dir}. Сначала выполните `tt sync --source {source_path} --locale-dir {locale_dir}`."
-"Missing model. Pass --model or set TT_MODEL/OPENAI_MODEL." = "Отсутствует модель. Передайте --model или установите TT_MODEL/OPENAI_MODEL."
-"Multiple package roots matched the extracted templates. Pass an absolute --locale-dir or narrow --source." = "Несколько корней пакетов соответствовали извлеченным шаблонам. Передайте абсолютный --locale-dir или сузьте --source."
-"No locale TOML files found in {locale_dir}" = "В {locale_dir} не найдены файлы TOML для локалей"
-"No locale TOML files found in {locale_dir}. Run `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...` first." = "В {locale_dir} не найдены файлы TOML для локалей. Сначала выполните `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...`."
-"No translatable template keys found in {locale_dir}." = "Переводимые ключи шаблонов не найдены в {locale_dir}."
-"Scan project, Sync the tt()-wrapped text, to all locale TOML files." = "Сканировать проект, синхронизировать текст, обёрнутый в tt(), со всеми файлами локализации TOML."
-"Scanned {scanned_files} Python file(s), initialized {len(locale_names)} locale file(s), created {len(entries)} template entry/entries." = "Просканировано {fmt.decimal(scanned_files)} файл(ов) Python, инициализировано {fmt.decimal(len(locale_names))} файл(ов) локали, создано {fmt.decimal(len(entries))} записей шаблона."
-"Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, removed {total_removed_entries} stale entry/entries." = "Просканировано {fmt.number(scanned_files)} файл(ов) Python, синхронизировано {fmt.number(len(locale_files))} файл(ов) локализации, отслежено {fmt.number(len(unique_messages))} шаблон(ов), добавлено {fmt.number(total_added_entries)} отсутствующ(ая/их) запис(ь/ей), удалено {fmt.number(total_removed_entries)} устаревш(ая/их) запис(ь/ей)."
-"Source path must be a Python file or directory: {source_path}" = "Исходный путь должен быть файлом или каталогом Python: {source_path}"
-"Source path not found: {source_path}" = "Исходный путь не найден: {source_path}"
-"Translate the missing text in all locale TOML language files through an OpenAI-compatible API." = "Переведите отсутствующий текст во всех файлах языка TOML через API, совместимый с OpenAI."
-"Updated {len(target_locales)} locale file(s), translated 0 entry/entries." = "Обновлено {fmt.number(len(target_locales))} файл(ов) локализации, переведено 0 записей."
-"Updated {len(target_locales)} locale file(s), translated {total_translated} entry/entries." = "Обновлено {fmt.number(len(target_locales))} файл(ов) локализации, переведено {fmt.number(total_translated)} запись/записей."
-"Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = "Предупреждение: Во время сканирования исходного кода обнаружен каталог 'tests'. Вы выбрали неправильный каталог --source?"
+"Autolang developer tools." = """
+Инструменты разработчика Autolang"""
+# --------------------
+"Could not infer a unique package root from --source. Pass an absolute --locale-dir or narrow --source." = """
+Не удалось определить уникальный корень пакета из --source. Укажите абсолютный --locale-dir или сузьте --source."""
+# --------------------
+"Create new TOML files for specified locales, and collect tt()-wrapped text templates." = """
+Создать новые файлы TOML для указанных языков и собрать текстовые шаблоны, обёрнутые в tt()."""
+# --------------------
+"Locale files already exist for {', '.join(conflicting_locale_names)} in {locale_dir}. Re-run with --force to replace them." = """
+Файлы локалей уже существуют для {', '.join(conflicting_locale_names)} в {locale_dir}. Повторно запустите с --force, чтобы заменить их."""
+# --------------------
+"Missing API key. Pass --api-key or set TT_API_KEY/OPENAI_API_KEY." = """
+Отсутствует ключ API. Передайте --api-key или установите TT_API_KEY/OPENAI_API_KEY."""
+# --------------------
+"Missing cue TOML files for {locale_dir}. Run `tt sync --source {source_path} --locale-dir {locale_dir}` first." = """
+Отсутствуют TOML-файлы подсказок для {locale_dir}. Сначала выполните `tt sync --source {source_path} --locale-dir {locale_dir}`."""
+# --------------------
+"Missing model. Pass --model or set TT_MODEL/OPENAI_MODEL." = """
+Отсутствует модель. Передайте --model или установите TT_MODEL/OPENAI_MODEL."""
+# --------------------
+"Multiple package roots matched the extracted templates. Pass an absolute --locale-dir or narrow --source." = """
+Несколько корней пакетов соответствовали извлеченным шаблонам. Передайте абсолютный --locale-dir или сузьте --source."""
+# --------------------
+"No locale TOML files found in {locale_dir}" = """
+В {locale_dir} не найдены файлы TOML для локалей"""
+# --------------------
+"No locale TOML files found in {locale_dir}. Run `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...` first." = """
+В {locale_dir} не найдены файлы TOML для локалей. Сначала выполните `tt init --source {source_path} --locale-dir {locale_dir} --locales <locale>...`."""
+# --------------------
+"No translatable template keys found in {locale_dir}." = """
+Переводимые ключи шаблонов не найдены в {locale_dir}."""
+# --------------------
+"Scan project, Sync the tt()-wrapped text, to all locale TOML files." = """
+Сканировать проект, синхронизировать текст, обёрнутый в tt(), со всеми файлами локализации TOML."""
+# --------------------
+"Scanned {scanned_files} Python file(s), initialized {len(locale_names)} locale file(s), created {len(entries)} template entry/entries." = """
+Просканировано {fmt.decimal(scanned_files)} файл(ов) Python, инициализировано {fmt.decimal(len(locale_names))} файл(ов) локали, создано {fmt.decimal(len(entries))} записей шаблона."""
+# --------------------
+"Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
+MISSING_TRANSLATION"""
+# --------------------
+"Source path must be a Python file or directory: {source_path}" = """
+Исходный путь должен быть файлом или каталогом Python: {source_path}"""
+# --------------------
+"Source path not found: {source_path}" = """
+Исходный путь не найден: {source_path}"""
+# --------------------
+"Translate the missing text in all locale TOML language files through an OpenAI-compatible API." = """
+Переведите отсутствующий текст во всех файлах языка TOML через API, совместимый с OpenAI."""
+# --------------------
+"Updated {len(target_locales)} locale file(s), translated 0 entry/entries." = """
+Обновлено {fmt.number(len(target_locales))} файл(ов) локализации, переведено 0 записей."""
+# --------------------
+"Updated {len(target_locales)} locale file(s), translated {total_translated} entry/entries." = """
+Обновлено {fmt.number(len(target_locales))} файл(ов) локализации, переведено {fmt.number(total_translated)} запись/записей."""
+# --------------------
+"Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
+Предупреждение: Во время сканирования исходного кода обнаружен каталог 'tests'. Вы выбрали неправильный каталог --source?"""
+# --------------------
