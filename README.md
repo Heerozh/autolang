@@ -237,7 +237,7 @@ By default, the command:
 - discover every `*.toml` file under the locale directory as a translation target
 - use each TOML key as the source template text
 - read cue text from `.<locale-dir>_cue/*.toml` when available
-- read optional project instructions from `tt_prompt.md` if found under the locale
+- read optional project instructions from `TT_PROMPT.md` if found under the locale
   directory, source directory, or current working directory, and append them to the
   system prompt
 - only translate locale entries whose current value is `MISSING_TRANSLATION`
@@ -249,7 +249,7 @@ By default, the command:
 - 把 locale 目录下的每个 `*.toml` 文件都作为翻译目标
 - 使用每个 TOML key 作为源模板文本
 - 在可用时从 `.<locale-dir>_cue/*.toml` 读取 cue 文本
-- 如果在 locale 目录、源码目录或当前工作目录下找到 `tt_prompt.md`，就读取其中可选的项目说明并追加到
+- 如果在 locale 目录、源码目录或当前工作目录下找到 `TT_PROMPT.md`，就读取其中可选的项目说明并追加到
   system prompt 中
 - 只翻译当前值为 `MISSING_TRANSLATION` 的 locale 条目
 - 每次模型请求只发送一个源 key
@@ -262,10 +262,6 @@ CLI 也会读取这些环境变量：
 - `TT_API_KEY` or `OPENAI_API_KEY`
 - `TT_BASE_URL` or `OPENAI_BASE_URL`
 - `TT_MODEL` or `OPENAI_MODEL`
-
-- `TT_API_KEY` 或 `OPENAI_API_KEY`
-- `TT_BASE_URL` 或 `OPENAI_BASE_URL`
-- `TT_MODEL` 或 `OPENAI_MODEL`
 
 ## How It Works / 工作原理
 
