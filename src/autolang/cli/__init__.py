@@ -41,7 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     translate_parser = subparsers.add_parser(
         "translate",
-        help=tt("Translate locale TOML files through an OpenAI-compatible API."),
+        help=tt(
+            "Translate the missing text in all locale TOML language files "
+            "through an OpenAI-compatible API."
+        ),
     )
     translate_parser.add_argument("--source", default="./src/")
     translate_parser.add_argument("--locale-dir", default="locales")
@@ -57,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sync_parser = subparsers.add_parser(
         "sync",
-        help=tt("Sync tt()-wrapped source templates across all locale TOML files."),
+        help=tt("Scan project, Sync the tt()-wrapped text, to all locale TOML files."),
     )
     sync_parser.add_argument("--source", default="./src/")
     sync_parser.add_argument("--locale-dir", default="locales")
@@ -67,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser(
         "init",
         help=tt(
-            "Initialize locale TOML files from collected tt()-wrapped source templates."
+            "Create new TOML files for specified locales, and collect tt()-wrapped text templates."
         ),
     )
     init_parser.add_argument("--source", default="./src/")
