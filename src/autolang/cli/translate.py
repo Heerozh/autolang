@@ -10,9 +10,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
-from tqdm import tqdm
-
 from ..toml_io import load_string_table, write_string_table
+from . import placeholders as _placeholders
 from .common import (
     MISSING_TRANSLATION,
     build_cue_dir_path,
@@ -24,7 +23,13 @@ from .common import (
     resolve_locale_dir_from_source,
 )
 from .i18n import tt
-from . import placeholders as _placeholders
+
+try:
+    from tqdm import tqdm
+except ModuleNotFoundError:
+    raise SystemExit(tt("执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]"))
+
+
 
 PlaceholderSpec = _placeholders.PlaceholderSpec
 validate_translated_text = _placeholders.validate_translated_text

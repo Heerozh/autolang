@@ -38,7 +38,7 @@
 Просканировано {fmt.decimal(scanned_files)} файл(ов) Python, инициализировано {fmt.decimal(len(locale_names))} файл(ов) локали, создано {fmt.decimal(len(entries))} записей шаблона."""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+Отсканировано {fmt.number(scanned_files)} файл(ов) Python, синхронизировано {fmt.number(len(locale_files))} файл(ов) локализации, отслежено {fmt.number(len(unique_messages))} шаблон(ов), добавлено {fmt.number(total_added_entries)} отсутствующ(их) запис(ей), сброшено {fmt.number(total_invalid_placeholder_resets)} недействительн(ых) перевод(ов) заполнителей, удалено {fmt.number(total_removed_entries)} устаревш(их) запис(ей)."""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 Исходный путь должен быть файлом или каталогом Python: {source_path}"""
@@ -57,4 +57,7 @@ MISSING_TRANSLATION"""
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 Предупреждение: Во время сканирования исходного кода обнаружен каталог 'tests'. Вы выбрали неправильный каталог --source?"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+Для выполнения команды tt необходимо добавить зависимость cli, например: uv add --dev autolang[cli]"""
 # --------------------

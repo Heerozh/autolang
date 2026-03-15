@@ -38,7 +38,7 @@ Autolang 开发者工具"""
 扫描了{fmt.decimal(scanned_files)}个Python文件，初始化了{fmt.decimal(len(locale_names))}个区域设置文件，创建了{fmt.decimal(len(entries))}个模板条目。"""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+扫描了{fmt.number(scanned_files)}个Python文件，同步了{fmt.number(len(locale_files))}个区域文件，跟踪了{fmt.number(len(unique_messages))}个模板，添加了{fmt.number(total_added_entries)}个缺失条目，重置了{fmt.number(total_invalid_placeholder_resets)}个无效占位符翻译，移除了{fmt.number(total_removed_entries)}个陈旧条目。"""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 源路径必须是 Python 文件或目录: {source_path}"""
@@ -57,4 +57,7 @@ MISSING_TRANSLATION"""
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 警告：在源代码扫描期间发现了一个 'tests' 目录。您是否选择了错误的 --source 目录？"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]"""
 # --------------------

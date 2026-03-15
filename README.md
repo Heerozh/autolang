@@ -95,7 +95,7 @@ Example output: / 示例输出：
 
 ```text
 Hola Alice
-Today is 11/3/26
+Hoy es 11/3/26
 Tienes 12 mil seguidores
 El saldo es 864,15 CNY
 ```

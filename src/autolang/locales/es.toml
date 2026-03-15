@@ -38,7 +38,7 @@ Escanear proyecto, sincronizar el texto envuelto en tt(), a todos los archivos T
 Escaneado(s) {fmt.decimal(scanned_files)} archivo(s) de Python, inicializado(s) {fmt.decimal(len(locale_names))} archivo(s) de configuración regional, creado(s) {fmt.decimal(len(entries))} entrada(s) de plantilla."""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+Escaneado(s) {fmt.number(scanned_files)} archivo(s) de Python, sincronizado(s) {fmt.number(len(locale_files))} archivo(s) de localización, rastreado(s) {fmt.number(len(unique_messages))} plantilla(s), añadido(s) {fmt.number(total_added_entries)} entrada(s) faltante(s), restablecido(s) {fmt.number(total_invalid_placeholder_resets)} traducción(es) de marcador de posición no válida(s), eliminado(s) {fmt.number(total_removed_entries)} entrada(s) obsoleta(s)."""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 La ruta de origen debe ser un archivo o directorio de Python: {source_path}"""
@@ -57,4 +57,7 @@ Se actualizó {fmt.number(len(target_locales))} archivo(s) de localización, se 
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 Advertencia: Se encontró un directorio 'tests' durante el escaneo de fuentes. ¿Seleccionó el directorio --source incorrecto?"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+Para ejecutar el comando tt, necesitas agregar la dependencia cli, por ejemplo: uv add --dev autolang[cli]"""
 # --------------------

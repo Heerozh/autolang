@@ -38,7 +38,7 @@ Projekt scannen, den tt()-eingeschlossenen Text synchronisieren, zu allen lokale
 {fmt.decimal(scanned_files)} Python-Datei(en) gescannt, {fmt.decimal(len(locale_names))} Lokalisierungsdatei(en) initialisiert, {fmt.decimal(len(entries))} Vorlageneintrag/Einträge erstellt."""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+{fmt.number(scanned_files)} Python-Datei(en) gescannt, {fmt.number(len(locale_files))} Lokalisierungsdatei(en) synchronisiert, {fmt.number(len(unique_messages))} Vorlage(n) verfolgt, {fmt.number(total_added_entries)} fehlende(s) Eintrag/Einträge hinzugefügt, {fmt.number(total_invalid_placeholder_resets)} ungültige(s) Platzhalterübersetzung(en) zurückgesetzt, {fmt.number(total_removed_entries)} veraltete(s) Eintrag/Einträge entfernt."""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 Der Quellpfad muss eine Python-Datei oder ein Verzeichnis sein: {source_path}"""
@@ -57,4 +57,7 @@ Quellpfad nicht gefunden: {source_path}"""
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 Warnung: Während des Quellscans wurde ein 'tests'-Verzeichnis gefunden. Haben Sie das falsche --source-Verzeichnis ausgewählt?"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+Um den tt-Befehl auszuführen, müssen Sie die cli-Abhängigkeit hinzufügen, z.B.: uv add --dev autolang[cli]"""
 # --------------------

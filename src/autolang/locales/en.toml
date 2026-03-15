@@ -38,7 +38,7 @@ Scan project, Sync the tt()-wrapped text, to all locale TOML files."""
 Scanned {scanned_files} Python file(s), initialized {len(locale_names)} locale file(s), created {len(entries)} template entry/entries."""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries."""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 Source path must be a Python file or directory: {source_path}"""
@@ -57,4 +57,7 @@ Updated {len(target_locales)} locale file(s), translated {total_translated} entr
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory?"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+To execute the tt command, you need to add the cli dependency, for example: uv add --dev autolang[cli]"""
 # --------------------

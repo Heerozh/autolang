@@ -38,7 +38,7 @@
 تم مسح {fmt.decimal(scanned_files)} ملف/ملفات بايثون، وتهيئة {fmt.decimal(len(locale_names))} ملف/ملفات محلية، وإنشاء {fmt.decimal(len(entries))} قالب/قوالب."""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+تم فحص {fmt.number(scanned_files)} ملف(ملفات) بايثون، ومزامنة {fmt.number(len(locale_files))} ملف(ملفات) محلية، وتتبع {fmt.number(len(unique_messages))} قالب(قوالب)، وإضافة {fmt.number(total_added_entries)} إدخال(إدخالات) مفقود(مفقودة)، وإعادة تعيين {fmt.number(total_invalid_placeholder_resets)} ترجمة(ترجمات) عنصر نائب غير صالح(غير صالحة)، وإزالة {fmt.number(total_removed_entries)} إدخال(إدخالات) قديم(قديمة)."""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 يجب أن يكون مسار المصدر ملفًا أو دليلًا في Python: {source_path}"""
@@ -57,4 +57,7 @@ MISSING_TRANSLATION"""
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 تحذير: تم العثور على دليل 'tests' أثناء فحص المصدر. هل اخترت دليل --source الخطأ؟"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+لتنفيذ أمر tt، تحتاج إلى إضافة تبعية cli، على سبيل المثال: uv add --dev autolang[cli]"""
 # --------------------

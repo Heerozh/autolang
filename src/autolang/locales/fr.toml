@@ -38,7 +38,7 @@ Scanner le projet, synchroniser le texte enveloppé par tt(), vers tous les fich
 {fmt.decimal(scanned_files)} fichier(s) Python analysé(s), {fmt.decimal(len(locale_names))} fichier(s) de paramètres régionaux initialisé(s), {fmt.decimal(len(entries))} entrée(s) de modèle créée(s)."""
 # --------------------
 "Scanned {scanned_files} Python file(s), synced {len(locale_files)} locale file(s), tracked {len(unique_messages)} template(s), added {total_added_entries} missing entry/entries, reset {total_invalid_placeholder_resets} invalid placeholder translation(s), removed {total_removed_entries} stale entry/entries." = """
-MISSING_TRANSLATION"""
+{fmt.number(scanned_files)} fichier(s) Python scanné(s), {fmt.number(len(locale_files))} fichier(s) de localisation synchronisé(s), {fmt.number(len(unique_messages))} modèle(s) suivi(s), {fmt.number(total_added_entries)} entrée(s) manquante(s) ajoutée(s), {fmt.number(total_invalid_placeholder_resets)} traduction(s) de placeholder invalide(s) réinitialisée(s), {fmt.number(total_removed_entries)} entrée(s) obsolète(s) supprimée(s)."""
 # --------------------
 "Source path must be a Python file or directory: {source_path}" = """
 Le chemin source doit être un fichier ou un répertoire Python : {source_path}"""
@@ -57,4 +57,7 @@ Traduire le texte manquant dans tous les fichiers de langue TOML locaux via une 
 # --------------------
 "Warning: A 'tests' directory was found during source scanning. Did you select the wrong --source directory? " = """
 Avertissement : Un répertoire 'tests' a été trouvé lors de l'analyse des sources. Avez-vous sélectionné le mauvais répertoire --source ?"""
+# --------------------
+"执行tt命令需要添加cli依赖，比如：uv add --dev autolang[cli]" = """
+Pour exécuter la commande tt, vous devez ajouter la dépendance cli, par exemple : uv add --dev autolang[cli]"""
 # --------------------
