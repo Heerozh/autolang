@@ -26,21 +26,24 @@ class FakeBatchClient:
         type(self).recorded_requests.append(request)
         results = {}
 
-        for item in request.items:
-            if request.target_locale == "es":
-                if item.key == "Hello {name}":
+        for target in request.targets:
+            if target.locale == "es":
+                if request.key == "Hello {name}":
                     text = "Hola {name}"
                 else:
-                    text = f"ES {item.source_text}"
-            elif request.target_locale == "fr":
-                if item.key == "Hello {name}":
+                    text = f"ES {request.source_text}"
+            elif target.locale == "fr":
+                if request.key == "Hello {name}":
                     text = "Bonjour {name}"
                 else:
-                    text = f"FR {item.source_text}"
+                    text = f"FR {request.source_text}"
             else:
-                text = f"{request.target_locale} {item.source_text}"
+                text = f"{target.locale} {request.source_text}"
 
-            results[item.id] = cli.TranslationResult(id=item.id, text=text)
+            results[target.locale] = cli.TranslationResult(
+                locale=target.locale,
+                text=text,
+            )
 
         return results
 
@@ -50,8 +53,13 @@ class InvalidPlaceholderClient:
         pass
 
     def translate_batch(self, request):
-        item = request.items[0]
-        return {item.id: cli.TranslationResult(id=item.id, text="Hola {other}")}
+        target = request.targets[0]
+        return {
+            target.locale: cli.TranslationResult(
+                locale=target.locale,
+                text="Hola {other}",
+            )
+        }
 
 
 def test_cli_modules_share_the_same_tt_wrapper():
@@ -106,7 +114,7 @@ def test_resolve_locale_dir_from_source_infers_package_root_without_templates(tm
     assert resolved == package_dir / "locales"
 
 
-def test_tt_translate_uses_batches_and_cues(monkeypatch, tmp_path):
+def test_tt_translate_groups_pending_locales_per_key(monkeypatch, tmp_path):
     locale_dir = tmp_path / "locales"
     cue_dir = tmp_path / ".locales_cue"
     locale_dir.mkdir()
@@ -156,15 +164,25 @@ def test_tt_translate_uses_batches_and_cues(monkeypatch, tmp_path):
     )
 
     assert exit_code == 0
-    assert len(FakeBatchClient.recorded_requests) == 3
-    assert any(
-        request.items[0].cue_text == "Hello Alice"
+    assert len(FakeBatchClient.recorded_requests) == 2
+
+    hello_request = next(
+        request
         for request in FakeBatchClient.recorded_requests
+        if request.key == "Hello {name}"
     )
-    assert all(
-        item.source_text != "MISSING_TRANSLATION"
+    goodbye_request = next(
+        request
         for request in FakeBatchClient.recorded_requests
-        for item in request.items
+        if request.key == "Goodbye"
+    )
+
+    assert hello_request.cue_text == "Hello Alice"
+    assert [target.locale for target in hello_request.targets] == ["es", "fr"]
+    assert [target.locale for target in goodbye_request.targets] == ["fr"]
+    assert all(
+        request.source_text != "MISSING_TRANSLATION"
+        for request in FakeBatchClient.recorded_requests
     )
     assert load_string_table(str(locale_dir / "es.toml")) == {
         "Goodbye": "Adiós",
@@ -655,14 +673,17 @@ def test_validate_translated_text_allows_fmt_wrappers():
 
 def test_build_batch_user_prompt_describes_mixed_language_keys():
     request = cli_translate.BatchTranslationRequest(
-        target_locale="es",
-        target_language="Spanish",
-        items=(
-            cli_translate.BatchTranslationItem(
-                id="hello",
-                key="hello",
-                source_text="Hola",
-                cue_text="No additional cue.",
+        key="hello",
+        source_text="Hola",
+        cue_text="No additional cue.",
+        targets=(
+            cli_translate.BatchTranslationTarget(
+                locale="es",
+                target_language="Spanish",
+            ),
+            cli_translate.BatchTranslationTarget(
+                locale="fr",
+                target_language="French",
             ),
         ),
     )
@@ -671,3 +692,31 @@ def test_build_batch_user_prompt_describes_mixed_language_keys():
 
     assert "TOML keys" in prompt
     assert "mixed-language" in prompt
+    assert "Source template:" in prompt
+    assert "Target locales:" in prompt
+    assert "es (Spanish)" in prompt
+    assert "fr (French)" in prompt
+
+
+def test_parse_batch_response_requires_all_requested_locales():
+    request = cli_translate.BatchTranslationRequest(
+        key="Hello",
+        source_text="Hello",
+        cue_text="Greeting",
+        targets=(
+            cli_translate.BatchTranslationTarget(
+                locale="es",
+                target_language="Spanish",
+            ),
+            cli_translate.BatchTranslationTarget(
+                locale="fr",
+                target_language="French",
+            ),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="locales do not match"):
+        cli_translate.parse_batch_response(
+            '{"translations":[{"locale":"es","text":"Hola"}]}',
+            request,
+        )

@@ -7,7 +7,8 @@ from . import sync as _sync
 from . import translate as _translate
 from .i18n import tt
 
-BatchTranslationItem = _translate.BatchTranslationItem
+BatchTranslationItem = _translate.BatchTranslationTarget
+BatchTranslationTarget = _translate.BatchTranslationTarget
 BatchTranslationOutcome = _translate.BatchTranslationOutcome
 BatchTranslationRequest = _translate.BatchTranslationRequest
 OpenAICompatibleClient = _translate.OpenAICompatibleClient
@@ -85,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
 
 __all__ = [
     "BatchTranslationItem",
+    "BatchTranslationTarget",
     "BatchTranslationOutcome",
     "BatchTranslationRequest",
     "OpenAICompatibleClient",

@@ -27,18 +27,18 @@ from .i18n import tt
 TRANSLATION_SYSTEM_PROMPT = """You are a localization rewrite engine for python template strings with Babel CLDR formatting.
 
 Task:
-Rewrite each source template for the target locale while preserving placeholders.
+Rewrite the single source template for each requested target locale while preserving placeholders.
 Use the source template together with the cue from static analysis.
 Source entries can contain mixed languages.
-For each item, first determine whether it already reads naturally for the target locale. If it already fits the target locale, keep it unchanged.
-If it does not fit the target locale, translate or adapt it for the target locale.
+For each requested locale, first determine whether the source already reads naturally for that locale. If it already fits the target locale, keep it unchanged.
+If it does not fit the target locale, translate or adapt it for that locale.
 
 Output format:
 Return JSON only:
 {
-  "items": [
+  "translations": [
     {
-      "id": "0",
+      "locale": "es",
       "text": "...",
       "needs_review": false,
       "issues": []
@@ -76,7 +76,7 @@ Hard rules:
 7. If the cue includes allowed candidates, stay within those candidates unless the source already uses an allowed fmt helper.
 8. If the cue is weak or ambiguous, keep the placeholder unchanged.
 9. If the text is already appropriate for the target locale, return it unchanged.
-10. Return one item for every input id.
+10. Return one translation for every requested locale.
 11. Do not explain your reasoning.
 12. Return JSON only.
 """
@@ -107,23 +107,22 @@ class TranslationTask:
 
 
 @dataclass(frozen=True, slots=True)
-class BatchTranslationItem:
-    id: str
-    key: str
-    source_text: str
-    cue_text: str
+class BatchTranslationTarget:
+    locale: str
+    target_language: str
 
 
 @dataclass(frozen=True, slots=True)
 class BatchTranslationRequest:
-    target_locale: str
-    target_language: str
-    items: tuple[BatchTranslationItem, ...]
+    key: str
+    source_text: str
+    cue_text: str
+    targets: tuple[BatchTranslationTarget, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class TranslationResult:
-    id: str
+    locale: str
     text: str
     needs_review: bool = False
     issues: tuple[str, ...] = ()
@@ -131,7 +130,7 @@ class TranslationResult:
 
 @dataclass(frozen=True, slots=True)
 class BatchTranslationOutcome:
-    target_locale: str
+    key: str
     results: tuple[TranslationResult, ...]
 
 
@@ -262,7 +261,6 @@ def handle_translate_command(args: argparse.Namespace) -> int:
         base_url = "https://api.openai.com/v1"
 
     workers = max(1, args.workers)
-    batch_size = max(1, args.batch_size)
 
     client = OpenAICompatibleClient(
         base_url=base_url,
@@ -274,23 +272,20 @@ def handle_translate_command(args: argparse.Namespace) -> int:
     target_locales = [normalize_locale_name(path.stem) for path in locale_files]
     source_cues = load_shared_cues(locale_dir)
     target_entries_by_locale: dict[str, dict[str, str]] = {}
-    pending_by_locale: dict[str, list[TranslationTask]] = {}
 
     for target_locale in target_locales:
         target_path = locale_dir / f"{target_locale}.toml"
-        target_entries = load_string_table(str(target_path))
-        target_entries_by_locale[target_locale] = target_entries
-        pending_tasks = build_translation_tasks(
-            source_entries=source_entries,
-            source_cues=source_cues,
-            target_locale=target_locale,
-            overwrite=args.overwrite,
-            current_entries=target_entries,
-        )
-        if pending_tasks:
-            pending_by_locale[target_locale] = pending_tasks
+        target_entries_by_locale[target_locale] = load_string_table(str(target_path))
 
-    if not pending_by_locale:
+    pending_by_key = build_translation_tasks(
+        source_entries=source_entries,
+        source_cues=source_cues,
+        target_locales=target_locales,
+        overwrite=args.overwrite,
+        current_entries_by_locale=target_entries_by_locale,
+    )
+
+    if not pending_by_key:
         print(
             tt(
                 f"Updated {len(target_locales)} locale file(s), translated 0 entry/entries."
@@ -300,20 +295,14 @@ def handle_translate_command(args: argparse.Namespace) -> int:
 
     outcomes = run_translation_batches(
         client=client,
-        pending_by_locale=pending_by_locale,
+        pending_by_key=pending_by_key,
         workers=workers,
-        batch_size=batch_size,
     )
 
     total_translated = 0
     for outcome in outcomes:
-        target_entries = target_entries_by_locale[outcome.target_locale]
-        tasks_by_id = {
-            task.key: task for task in pending_by_locale[outcome.target_locale]
-        }
         for result in outcome.results:
-            task = tasks_by_id[result.id]
-            target_entries[task.key] = result.text
+            target_entries_by_locale[result.locale][outcome.key] = result.text
             total_translated += 1
 
     if not args.dry_run:
@@ -358,57 +347,53 @@ def build_translation_tasks(
     *,
     source_entries: dict[str, str],
     source_cues: dict[str, str],
-    target_locale: str,
+    target_locales: list[str],
     overwrite: bool,
-    current_entries: dict[str, str],
-) -> list[TranslationTask]:
-    target_language = locale_display_name(target_locale)
-    tasks: list[TranslationTask] = []
-
+    current_entries_by_locale: dict[str, dict[str, str]],
+) -> dict[str, list[TranslationTask]]:
+    pending_by_key: dict[str, list[TranslationTask]] = {}
     for key in source_entries:
-        current_text = current_entries.get(key)
-        if not should_translate_entry(current_text, overwrite):
-            continue
-
-        tasks.append(
-            TranslationTask(
-                key=key,
-                source_text=key,
-                cue_text=source_cues.get(key, ""),
-                target_locale=target_locale,
-                target_language=target_language,
+        pending_targets: list[TranslationTask] = []
+        for target_locale in target_locales:
+            current_text = current_entries_by_locale[target_locale].get(key)
+            if not should_translate_entry(current_text, overwrite):
+                continue
+            pending_targets.append(
+                TranslationTask(
+                    key=key,
+                    source_text=key,
+                    cue_text=source_cues.get(key, ""),
+                    target_locale=target_locale,
+                    target_language=locale_display_name(target_locale),
+                )
             )
-        )
+        if pending_targets:
+            pending_by_key[key] = pending_targets
 
-    return tasks
+    return pending_by_key
 
 
 def run_translation_batches(
     *,
     client: OpenAICompatibleClient,
-    pending_by_locale: dict[str, list[TranslationTask]],
+    pending_by_key: dict[str, list[TranslationTask]],
     workers: int,
-    batch_size: int,
 ) -> list[BatchTranslationOutcome]:
-    batch_requests: list[BatchTranslationRequest] = []
-    for target_locale, tasks in pending_by_locale.items():
-        for chunk in chunked(tasks, batch_size):
-            items = tuple(
-                BatchTranslationItem(
-                    id=task.key,
-                    key=task.key,
-                    source_text=task.source_text,
-                    cue_text=task.cue_text,
+    batch_requests = [
+        BatchTranslationRequest(
+            key=key,
+            source_text=tasks[0].source_text,
+            cue_text=tasks[0].cue_text,
+            targets=tuple(
+                BatchTranslationTarget(
+                    locale=task.target_locale,
+                    target_language=task.target_language,
                 )
-                for task in chunk
-            )
-            batch_requests.append(
-                BatchTranslationRequest(
-                    target_locale=target_locale,
-                    target_language=chunk[0].target_language,
-                    items=items,
-                )
-            )
+                for task in tasks
+            ),
+        )
+        for key, tasks in pending_by_key.items()
+    ]
 
     outcomes: list[BatchTranslationOutcome] = []
     if workers == 1 or len(batch_requests) == 1:
@@ -418,8 +403,10 @@ def run_translation_batches(
             )
             outcomes.append(
                 BatchTranslationOutcome(
-                    target_locale=batch_request.target_locale,
-                    results=tuple(results[item.id] for item in batch_request.items),
+                    key=batch_request.key,
+                    results=tuple(
+                        results[target.locale] for target in batch_request.targets
+                    ),
                 )
             )
         return outcomes
@@ -434,8 +421,10 @@ def run_translation_batches(
             results = validate_batch_results(batch_request, future.result())
             outcomes.append(
                 BatchTranslationOutcome(
-                    target_locale=batch_request.target_locale,
-                    results=tuple(results[item.id] for item in batch_request.items),
+                    key=batch_request.key,
+                    results=tuple(
+                        results[target.locale] for target in batch_request.targets
+                    ),
                 )
             )
 
@@ -446,41 +435,37 @@ def validate_batch_results(
     request: BatchTranslationRequest,
     results: dict[str, TranslationResult],
 ) -> dict[str, TranslationResult]:
-    expected_ids = {item.id for item in request.items}
-    if set(results) != expected_ids:
+    expected_locales = {target.locale for target in request.targets}
+    if set(results) != expected_locales:
         raise RuntimeError(
-            f"Batch result ids do not match request ids. expected={sorted(expected_ids)} got={sorted(results)}"
+            "Batch result locales do not match request locales. "
+            f"expected={sorted(expected_locales)} got={sorted(results)}"
         )
 
-    source_by_id = {item.id: item for item in request.items}
-    for item_id, result in results.items():
-        validate_translated_text(source_by_id[item_id].source_text, result.text)
+    for result in results.values():
+        validate_translated_text(request.source_text, result.text)
 
     return results
 
 
 def build_batch_user_prompt(request: BatchTranslationRequest) -> str:
     lines = [
-        f"Target language: {request.target_language}",
-        f"Target locale: {request.target_locale}",
-        "Important: source entries come from TOML keys and may be mixed-language. Decide per item whether translation is needed.",
+        "Important: source entries come from TOML keys and may be mixed-language. Decide per locale whether translation is needed.",
         "",
-        "Translate every item below and return one JSON output item for every id.",
+        "Translate the single source template below for every target locale.",
+        "",
+        "Source template:",
+        request.source_text,
+        "",
+        "Cue:",
+        request.cue_text or "No additional cue.",
+        "",
+        "Target locales:",
         "",
     ]
 
-    for item in request.items:
-        lines.extend(
-            [
-                f"Item id: {item.id}",
-                "Source template:",
-                item.source_text,
-                "",
-                "Cue:",
-                item.cue_text or "No additional cue.",
-                "",
-            ]
-        )
+    for target in request.targets:
+        lines.append(f"- {target.locale} ({target.target_language})")
 
     return "\n".join(lines)
 
@@ -494,25 +479,24 @@ def parse_batch_response(
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Model returned invalid JSON: {content}") from exc
 
-    items = data.get("items")
+    items = data.get("translations")
     if not isinstance(items, list):
-        raise RuntimeError(f"Model response missing items: {content}")
+        raise RuntimeError(f"Model response missing translations: {content}")
 
-    expected_ids = {item.id for item in request.items}
+    expected_locales = {target.locale for target in request.targets}
     parsed_results: dict[str, TranslationResult] = {}
-    source_by_id = {item.id: item for item in request.items}
 
     for raw_item in items:
         if not isinstance(raw_item, dict):
             raise RuntimeError(f"Model response item is not an object: {content}")
 
-        item_id = raw_item.get("id")
+        item_locale = raw_item.get("locale")
         text = raw_item.get("text")
         needs_review = raw_item.get("needs_review", False)
         issues = raw_item.get("issues", [])
 
-        if not isinstance(item_id, str) or item_id not in expected_ids:
-            raise RuntimeError(f"Model response returned unknown id: {content}")
+        if not isinstance(item_locale, str) or item_locale not in expected_locales:
+            raise RuntimeError(f"Model response returned unknown locale: {content}")
         if not isinstance(text, str) or not text:
             raise RuntimeError(f"Model response missing translated text: {content}")
         if not isinstance(needs_review, bool):
@@ -526,18 +510,19 @@ def parse_batch_response(
                 f"Model response issues must be a list of strings: {content}"
             )
 
-        validate_translated_text(source_by_id[item_id].source_text, text)
+        validate_translated_text(request.source_text, text)
 
-        parsed_results[item_id] = TranslationResult(
-            id=item_id,
+        parsed_results[item_locale] = TranslationResult(
+            locale=item_locale,
             text=text,
             needs_review=needs_review,
             issues=tuple(issues),
         )
 
-    if set(parsed_results) != expected_ids:
+    if set(parsed_results) != expected_locales:
         raise RuntimeError(
-            f"Model response ids do not match request ids. expected={sorted(expected_ids)} got={sorted(parsed_results)}"
+            "Model response locales do not match request locales. "
+            f"expected={sorted(expected_locales)} got={sorted(parsed_results)}"
         )
 
     return parsed_results
