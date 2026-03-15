@@ -20,6 +20,7 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
 - Automatically formats locale-sensitive values such as decimal separators, units, and
   currencies, and provides candidates for AI to handle.
 
+----
 
 - 全自动，免维护
 - 支持 f-string，且只允许 f-string。使用AST和LSP，记录f-string上下文用于翻译
@@ -34,6 +35,7 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
    `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
    to your CI/CD pipeline.
 
+----
 
 1. 首先用 `tt()` 包裹你的所有文本。
 2. `tt init --locales en zh fr` 来初始化你项目的语言
@@ -106,6 +108,7 @@ from autolang import (
   entries.
 - `translator.clear_cache()` clears the instance cache without reloading files.
 
+----
 
 - `install(locale_dir="locales", locale_str=None)` 创建并返回一个 translator 实例。
 - `translator.translate(text)` 翻译当前调用位置的文本。
@@ -154,6 +157,7 @@ By default, the command:
 - skip files that already exist
 - write all keys as `"text" = "MISSING_TRANSLATION"`
 
+----
 
 - 扫描 `--source` 下的 Python 文件
 - 为每个请求的 locale 创建一个 TOML 文件
@@ -189,6 +193,7 @@ By default, the command:
 - include per-placeholder context such as the nearest assignment, parameter annotation,
   allowed `fmt.*` candidates, and a recommended candidate when confidence is high
 
+----
 
 - 扫描 `--source` 下的 Python 文件
 - 通过兼容 Babel 的提取器提取 `tt("...")` 和 `tt(f"...")` 调用位置
@@ -231,6 +236,7 @@ By default, the command:
 - send one source key per model request
 - validate the returned JSON and placeholders before writing files when they are safe
 
+----
 
 - 把 locale 目录下的每个 `*.toml` 文件都作为翻译目标
 - 使用每个 TOML key 作为源模板文本
@@ -269,6 +275,7 @@ At a high level:
    translator instance.
 6. Later calls from the same bytecode location reuse the cached compiled expression.
 
+----
 
 1. 你调用 `tt(f"...")`。
    这里的 `tt = translator.translate`。
