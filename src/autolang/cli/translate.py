@@ -7,9 +7,12 @@ import os
 import re
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+
+from tqdm import tqdm
 
 from ..toml_io import load_string_table, write_string_table
 from .common import (
@@ -333,23 +336,29 @@ def handle_translate_command(
         )
         return 0
 
-    outcomes = run_translation_batches(
-        client=client,
-        pending_by_key=pending_by_key,
-        workers=workers,
-    )
-
     total_translated = 0
-    for outcome in outcomes:
-        for result in outcome.results:
-            target_entries_by_locale[result.locale][outcome.key] = result.text
-            total_translated += 1
+    progress = create_translation_progress(len(pending_by_key))
+    try:
+        for outcome in iter_translation_batches(
+            client=client,
+            pending_by_key=pending_by_key,
+            workers=workers,
+        ):
+            touched_locales: set[str] = set()
+            for result in outcome.results:
+                target_entries_by_locale[result.locale][outcome.key] = result.text
+                total_translated += 1
+                touched_locales.add(result.locale)
 
-    if not args.dry_run:
-        for target_locale, target_entries in target_entries_by_locale.items():
-            write_string_table(
-                str(locale_dir / f"{target_locale}.toml"), target_entries
-            )
+            if not args.dry_run:
+                for target_locale in touched_locales:
+                    write_string_table(
+                        str(locale_dir / f"{target_locale}.toml"),
+                        target_entries_by_locale[target_locale],
+                    )
+            progress.update()
+    finally:
+        progress.close()
 
     print(
         tt(
@@ -413,12 +422,12 @@ def build_translation_tasks(
     return pending_by_key
 
 
-def run_translation_batches(
+def iter_translation_batches(
     *,
     client: OpenAICompatibleClient,
     pending_by_key: dict[str, list[TranslationTask]],
     workers: int,
-) -> list[BatchTranslationOutcome]:
+) -> Iterator[BatchTranslationOutcome]:
     batch_requests = [
         BatchTranslationRequest(
             key=key,
@@ -435,23 +444,22 @@ def run_translation_batches(
         for key, tasks in pending_by_key.items()
     ]
 
-    outcomes: list[BatchTranslationOutcome] = []
     if workers == 1 or len(batch_requests) == 1:
         for batch_request in batch_requests:
             results = validate_batch_results(
                 batch_request, client.translate_batch(batch_request)
             )
-            outcomes.append(
-                BatchTranslationOutcome(
-                    key=batch_request.key,
-                    results=tuple(
-                        results[target.locale] for target in batch_request.targets
-                    ),
-                )
+            yield BatchTranslationOutcome(
+                key=batch_request.key,
+                results=tuple(
+                    results[target.locale] for target in batch_request.targets
+                ),
             )
-        return outcomes
+        return
 
-    with ThreadPoolExecutor(max_workers=workers) as executor:
+    executor = ThreadPoolExecutor(max_workers=workers)
+    future_map = {}
+    try:
         future_map = {
             executor.submit(client.translate_batch, batch_request): batch_request
             for batch_request in batch_requests
@@ -459,16 +467,22 @@ def run_translation_batches(
         for future in as_completed(future_map):
             batch_request = future_map[future]
             results = validate_batch_results(batch_request, future.result())
-            outcomes.append(
-                BatchTranslationOutcome(
-                    key=batch_request.key,
-                    results=tuple(
-                        results[target.locale] for target in batch_request.targets
-                    ),
-                )
+            yield BatchTranslationOutcome(
+                key=batch_request.key,
+                results=tuple(
+                    results[target.locale] for target in batch_request.targets
+                ),
             )
+    except Exception:
+        for future in future_map:
+            future.cancel()
+        raise
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
-    return outcomes
+
+def create_translation_progress(total: int):
+    return tqdm(total=total, desc="Translating", unit="batch")
 
 
 def validate_batch_results(

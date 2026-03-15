@@ -63,6 +63,24 @@ class InvalidPlaceholderClient:
         }
 
 
+class PartialFailureClient:
+    def __init__(self, *args, **kwargs):
+        self._calls = 0
+
+    def translate_batch(self, request):
+        self._calls += 1
+        if self._calls == 2:
+            raise RuntimeError("translation failed on second batch")
+
+        target = request.targets[0]
+        return {
+            target.locale: cli.TranslationResult(
+                locale=target.locale,
+                text=f"OK {request.source_text}",
+            )
+        }
+
+
 def test_cli_modules_share_the_same_tt_wrapper():
     assert cli.tt is cli_init.tt
     assert cli.tt is cli_sync.tt
@@ -279,6 +297,125 @@ def test_tt_translate_dry_run_does_not_write(monkeypatch, tmp_path):
     assert load_string_table(str(locale_dir / "es.toml")) == {
         "Hello {name}": "MISSING_TRANSLATION",
     }
+
+
+def test_tt_translate_persists_completed_batches_before_failure(monkeypatch, tmp_path):
+    locale_dir = tmp_path / "locales"
+    cue_dir = tmp_path / ".locales_cue"
+    locale_dir.mkdir()
+    cue_dir.mkdir()
+    (locale_dir / "en.toml").write_text(
+        '"Alpha" = "Alpha"\n"Beta" = "Beta"\n', encoding="utf-8"
+    )
+    (locale_dir / "es.toml").write_text(
+        '"Alpha" = "MISSING_TRANSLATION"\n"Beta" = "MISSING_TRANSLATION"\n',
+        encoding="utf-8",
+    )
+    (cue_dir / "en.toml").write_text(
+        '"Alpha" = "Greeting"\n"Beta" = "Greeting"\n', encoding="utf-8"
+    )
+    (cue_dir / "es.toml").write_text(
+        '"Alpha" = "Greeting"\n"Beta" = "Greeting"\n', encoding="utf-8"
+    )
+
+    monkeypatch.setattr(cli, "OpenAICompatibleClient", PartialFailureClient)
+
+    with pytest.raises(RuntimeError, match="second batch"):
+        cli.main(
+            [
+                "translate",
+                "--locale-dir",
+                str(locale_dir),
+                "--model",
+                "demo-model",
+                "--api-key",
+                "demo-key",
+                "--workers",
+                "1",
+            ]
+        )
+
+    assert load_string_table(str(locale_dir / "es.toml")) == {
+        "Alpha": "OK Alpha",
+        "Beta": "MISSING_TRANSLATION",
+    }
+
+
+def test_tt_translate_reports_progress_for_completed_batches(monkeypatch, tmp_path):
+    locale_dir = tmp_path / "locales"
+    cue_dir = tmp_path / ".locales_cue"
+    locale_dir.mkdir()
+    cue_dir.mkdir()
+    (locale_dir / "en.toml").write_text(
+        '"Alpha" = "Alpha"\n"Beta" = "Beta"\n', encoding="utf-8"
+    )
+    (locale_dir / "es.toml").write_text(
+        '"Alpha" = "MISSING_TRANSLATION"\n"Beta" = "MISSING_TRANSLATION"\n',
+        encoding="utf-8",
+    )
+    (cue_dir / "en.toml").write_text(
+        '"Alpha" = "Greeting"\n"Beta" = "Greeting"\n', encoding="utf-8"
+    )
+    (cue_dir / "es.toml").write_text(
+        '"Alpha" = "Greeting"\n"Beta" = "Greeting"\n', encoding="utf-8"
+    )
+
+    progress_events: list[tuple[str, int]] = []
+
+    class RecordingProgress:
+        def __init__(self, total: int, description: str):
+            progress_events.append(("start", total))
+            progress_events.append(("desc", description))
+
+        def update(self, step: int = 1):
+            progress_events.append(("update", step))
+
+        def close(self):
+            progress_events.append(("close", 0))
+
+    monkeypatch.setattr(cli, "OpenAICompatibleClient", FakeBatchClient)
+    monkeypatch.setattr(
+        cli_translate,
+        "create_translation_progress",
+        lambda total: RecordingProgress(total, "Translating"),
+        raising=False,
+    )
+
+    exit_code = cli.main(
+        [
+            "translate",
+            "--locale-dir",
+            str(locale_dir),
+            "--model",
+            "demo-model",
+            "--api-key",
+            "demo-key",
+            "--workers",
+            "1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert ("start", 2) in progress_events
+    assert progress_events.count(("update", 1)) == 2
+    assert ("close", 0) in progress_events
+
+
+def test_create_translation_progress_uses_tqdm(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_tqdm(*, total, desc, unit):
+        captured["total"] = total
+        captured["desc"] = desc
+        captured["unit"] = unit
+        return object()
+
+    monkeypatch.setattr(cli_translate, "tqdm", fake_tqdm)
+
+    progress = cli_translate.create_translation_progress(3)
+
+    assert captured == {"total": 3, "desc": "Translating", "unit": "batch"}
+    assert progress is not None
 
 
 def test_tt_translate_requires_sync_when_cues_are_missing(tmp_path):
