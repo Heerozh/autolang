@@ -31,7 +31,7 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
 
 1. First, wrap all your text with `tt()`.
 2. Run `tt init --locales en zh fr` to initialize the languages for your project.
-3. Add `tt sycn` and
+3. Add `tt sync` and
    `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
    to your CI/CD pipeline.
 
@@ -41,7 +41,7 @@ All Done!
 
 1. 首先用 `tt()` 包裹你的所有文本。
 2. `tt init --locales en zh fr` 来初始化你项目的语言
-3. 在 ci/cd 流程中添加 `tt sycn` &&
+3. 在 ci/cd 流程中添加 `tt sync` &&
    `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
 
 ## Installation / 安装
