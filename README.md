@@ -271,23 +271,20 @@ At a high level:
 
 1. You call `tt(f"...")`.
    Here `tt = translator.translate`.
-2. The library inspects the caller frame and maps it back to the AST node for that exact
-   call site.
-3. It rebuilds the source template, for example `Hello {name}`.
-4. It loads the translated template from TOML.
-5. It compiles the translated template as an f-string expression and caches it per
-   translator instance.
-6. Later calls from the same bytecode location reuse the cached compiled expression.
+2. The library via reflection rebuilds the source template as key, for example
+   `Hello {name}`.
+3. It loads the translated template from TOML by key.
+4. Compiles the translated template and caches it.
+5. Later calls from the same bytecode location reuse the cached compiled expression.
 
 ----
 
 1. 你调用 `tt(f"...")`。
    这里的 `tt = translator.translate`。
-2. 库会检查调用者的栈帧，并把它映射回那个精确调用位置对应的 AST 节点。
-3. 它会重建源模板，例如 `Hello {name}`。
-4. 它会从 TOML 中加载翻译后的模板。
-5. 它会把翻译后的模板编译成一个 f-string 表达式，并按 translator 实例进行缓存。
-6. 之后来自同一字节码位置的调用会复用这个已缓存的编译表达式。
+2. 库会通过反射，从字节码位置重建源模板作为语言key，例如 `Hello {name}`。
+3. 然后从 TOML 中找出对应的翻译后的模板。
+4. 编译翻译后的模板并缓存。
+5. 之后来自同一字节码位置的调用会复用这个已缓存的编译表达式。
 
 ## Development / 开发
 
