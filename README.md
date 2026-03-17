@@ -10,6 +10,56 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
 
 只需要通过 `tt(f"repo stars is {var}K")` 把f-string包装下，就这样。
 
+## Quick Start / 快速开始
+
+```python
+from datetime import datetime
+
+import babel
+import babel.support
+
+from autolang import install
+
+# locale_str=None means use system language, or an RFC3066 locale like `zh_Hans`
+# locale_str=None 表示使用系统语言，或者使用类似 `zh_Hans` 的 RFC3066 locale
+translator = install(locale_str=None)
+tt = translator.translate
+
+# global localization formatting tool
+# 贯穿全局的本地化Format工具
+fmt: babel.support.Format = translator.format
+
+name = "Alice"
+now = datetime(2026, 3, 11)
+follower = 12345
+print(tt(f"Hello {name}"))
+print(tt(f"Today is {fmt.date(now, format='short')}"))
+print(tt(f"Your have {follower / 1000}K followers"))
+
+# currency format
+# 货币格式
+currency = "CNY"
+balance = 864.15
+print(tt(f"Balance is {fmt.currency(balance, currency)}"))
+```
+
+Execution: / 执行：
+
+```bash
+uv run tt init --locales es
+uv run tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xx
+uv run readme.py
+```
+
+Example output: / 示例输出：
+
+```text
+Hola Alice
+Hoy es 11/3/26
+Tienes 12 mil seguidores
+El saldo es 864,15 CNY
+```
+
 ## Features / 特性
 
 - Fully automatic and maintenance-free
@@ -66,55 +116,7 @@ All Done!
 uv add autolang && uv add --dev 'autolang[cli]'
 ```
 
-## Quick Start / 快速开始
 
-```python
-from datetime import datetime
-
-import babel
-import babel.support
-
-from autolang import install
-
-# locale_str=None means use system language, or an RFC3066 locale like `zh_Hans`
-# locale_str=None 表示使用系统语言，或者使用类似 `zh_Hans` 的 RFC3066 locale
-translator = install(locale_str=None)
-tt = translator.translate
-
-# global localization formatting tool
-# 贯穿全局的本地化Format工具
-fmt: babel.support.Format = translator.format
-
-name = "Alice"
-now = datetime(2026, 3, 11)
-follower = 12345
-print(tt(f"Hello {name}"))
-print(tt(f"Today is {fmt.date(now, format='short')}"))
-print(tt(f"Your have {follower / 1000}K followers"))
-
-# currency format
-# 货币格式
-currency = "CNY"
-balance = 864.15
-print(tt(f"Balance is {fmt.currency(balance, currency)}"))
-```
-
-Execution: / 执行：
-
-```bash
-uv run tt init --locales es
-uv run tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xx
-uv run readme.py
-```
-
-Example output: / 示例输出：
-
-```text
-Hola Alice
-Hoy es 11/3/26
-Tienes 12 mil seguidores
-El saldo es 864,15 CNY
-```
 
 ## Public API / 公共 API
 
