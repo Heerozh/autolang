@@ -37,6 +37,9 @@ where = ["src"]
 [tool.pyright]
 typeCheckingMode = "standard"
 
+[tool.uv.sources]
+ya = { git = "https://github.com/Heerozh/ya.git" }
+
 [dependency-groups]
 dev = [
     "basedpyright>=1.38.2",
@@ -45,4 +48,5 @@ dev = [
     "pytest-benchmark>=5.2.3",
     "ruff>=0.15.6",
     "tqdm>=4.67.3",
+    "ya",
 ]

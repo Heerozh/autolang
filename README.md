@@ -10,46 +10,6 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
 
 只需要通过 `tt(f"repo stars is {var}K")` 把f-string包装下，就这样。
 
-## Features / 特性
-
-- Fully automatic and maintenance-free
-- Supports f-strings, and only f-strings. It uses AST and LSP to record f-string context
-  for translation.
-- Does not restrict the source language of your text. If your project has collaborators
-  from different countries or regions, they can write in their native languages.
-- Automatically formats locale-sensitive values such as decimal separators, units, and
-  currencies, and provides candidates for AI to handle.
-
-----
-
-- 全自动，免维护
-- 支持 f-string，且只允许 f-string。使用AST和LSP，记录f-string上下文用于翻译
-- 不限制文本语言，你的项目如果有多个国家地区的合作者，可以让他们使用自己的母语
-- 自动格式化，遇到需要本地化的格式，如小数点，单位，货币等，会提供候选让AI处理
-
-## Workflow / 工作流
-
-1. First, wrap all your text with `tt()`.
-2. Run `tt init --locales en zh fr` to initialize the languages for your project.
-3. Add `tt sync` and
-   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
-   to your CI/CD pipeline.
-
-All Done!
-
-----
-
-1. 首先用 `tt()` 包裹你的所有文本。
-2. `tt init --locales en zh fr` 来初始化你项目的语言
-3. 在 ci/cd 流程中添加 `tt sync` &&
-   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
-
-## Installation / 安装
-
-```bash
-uv add autolang && uv add --dev 'autolang[cli]'
-```
-
 ## Quick Start / 快速开始
 
 ```python
@@ -99,6 +59,64 @@ Hoy es 11/3/26
 Tienes 12 mil seguidores
 El saldo es 864,15 CNY
 ```
+
+## Features / 特性
+
+- Fully automatic and maintenance-free
+- Supports f-strings, and only f-strings. It uses AST and LSP to record f-string context
+  for translation.
+- Does not restrict the source language of your text. If your project has collaborators
+  from different countries or regions, they can write in their native languages.
+- Automatically formats locale-sensitive values such as decimal separators, units, and
+  currencies, and provides candidates for AI to handle.
+
+----
+
+- 全自动，免维护
+- 支持 f-string，且只允许 f-string。使用AST和LSP，记录f-string上下文用于翻译
+- 不限制文本语言，你的项目如果有多个国家地区的合作者，可以让他们使用自己的母语
+- 自动格式化，遇到需要本地化的格式，如小数点，单位，货币等，会提供候选让AI处理
+
+## Drawbacks / 缺陷
+
+The convenience comes with a clear tradeoff: f-strings and placeholder expressions are
+evaluated twice. The source f-string is evaluated before `tt()` is called, and the
+translated f-string is evaluated again during translation. In practice, `tt()` 
+takes twice as long as a simple f-string.
+
+This is usually acceptable for error logs and other fixed text, but it is not suitable
+for webpages or any application that needs to render text frequently.
+
+便捷使用的另一面，也有一个明显缺陷：f-string 和其中的占位表达式会被求值两次。
+源 f-string 会在调用 `tt()` 之前先执行一次，翻译后的 f-string 在翻译阶段又会再执行一次。
+实际性能就是 `tt()` 耗时2倍与单纯的 f-string。
+
+这对于错误日志和其他固定文案通常是足够的，但不适合用于网页或任何需要频繁渲染文字的应用。
+
+## Workflow / 工作流
+
+1. First, wrap all your text with `tt()`.
+2. Run `tt init --locales en zh fr` to initialize the languages for your project.
+3. Add `tt sync` and
+   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
+   to your CI/CD pipeline.
+
+All Done!
+
+----
+
+1. 首先用 `tt()` 包裹你的所有文本。
+2. `tt init --locales en zh fr` 来初始化你项目的语言
+3. 在 ci/cd 流程中添加 `tt sync` &&
+   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
+
+## Installation / 安装
+
+```bash
+uv add autolang && uv add --dev 'autolang[cli]'
+```
+
+
 
 ## Public API / 公共 API
 

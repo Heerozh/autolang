@@ -213,3 +213,4 @@ codex*
 gemini*
 claude*
 .run/
+benchmark_results.csv
