@@ -69,7 +69,7 @@ Hard rules:
 3. Only change a placeholder by keeping it unchanged or wrapping the original expression with one allowed fmt helper.
 4. If the source template already contains an allowed fmt helper, keep that placeholder expression exactly.
 5. Do not output arbitrary code, indexing, attribute access, or method calls other than allowed fmt helpers.
-6. If the cue strongly indicates date, time, datetime, currency, percent, compact number, or timedelta formatting, you may apply the matching fmt helper.
+6. If the cue strongly indicates date, time, datetime, currency, percent, decimal, number, compact number, or timedelta formatting, you may apply the matching fmt helper.
 7. If the cue includes allowed candidates, stay within those candidates unless the source already uses an allowed fmt helper.
 8. If the cue is weak or ambiguous, keep the placeholder unchanged.
 9. If the text is already appropriate for the target locale, return it unchanged.
