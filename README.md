@@ -1,10 +1,9 @@
 # Autolang
 
-`Autolang` automatically adds multilingual support to your Python project, analyzes and
-collects context, and uses AI-powered translation so you do not need to maintain or
-manage localization manually.
+`Autolang` is a fully automatic and maintenance-free multilingual support for Python, It will 
+analyzes and collects context, and send to LLM for translation.
 
-`Autolang` 让你的 Python 项目自动支持多国语言，自动分析并收集信息，外加AI翻译，使你不需要任何维护和管理。
+`Autolang` 是全自动，免维护的 Python 多语言支持，它会自动分析并收集信息，并发送给大模型进行翻译。
 
 You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that is it.
 
@@ -38,16 +37,20 @@ print(tt(f"Your have {follower / 1000}K followers"))
 
 # currency format
 # 货币格式
-currency = "CNY"
 balance = 864.15
-print(tt(f"Balance is {fmt.currency(balance, currency)}"))
+print(tt(f"Balance is {fmt.currency(balance, 'CNY')}")
+```
+
+Translation: / 翻译：
+
+```bash
+uv run tt init --locales es
+uv run tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xx
 ```
 
 Execution: / 执行：
 
 ```bash
-uv run tt init --locales es
-uv run tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xx
 uv run readme.py
 ```
 
