@@ -27,6 +27,22 @@ You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that i
 - 不限制文本语言，你的项目如果有多个国家地区的合作者，可以让他们使用自己的母语
 - 自动格式化，遇到需要本地化的格式，如小数点，单位，货币等，会提供候选让AI处理
 
+## Drawbacks / 缺陷
+
+The convenience comes with a clear tradeoff: f-strings and placeholder expressions are
+evaluated twice. The source f-string is evaluated before `tt()` is called, and the
+translated f-string is evaluated again during translation. In practice, `tt()` 
+takes twice as long as a simple f-string.
+
+This is usually acceptable for error logs and other fixed text, but it is not suitable
+for webpages or any application that needs to render text frequently.
+
+便捷使用的另一面，也有一个明显缺陷：f-string 和其中的占位表达式会被求值两次。
+源 f-string 会在调用 `tt()` 之前先执行一次，翻译后的 f-string 在翻译阶段又会再执行一次。
+实际性能就是 `tt()` 耗时2倍与单纯的 f-string。
+
+这对于错误日志和其他固定文案通常是足够的，但不适合用于网页或任何需要频繁渲染文字的应用。
+
 ## Workflow / 工作流
 
 1. First, wrap all your text with `tt()`.
