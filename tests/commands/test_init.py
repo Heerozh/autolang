@@ -9,7 +9,7 @@ from autolang.cli import main
 
 def test_init_creates_catalogs_for_each_locale(sample_project: Path) -> None:
     write_source(
-        sample_project / "app.py",
+        sample_project / "src" / "app.py",
         [
             "hello",
             "goodbye",
@@ -26,7 +26,7 @@ def test_init_creates_catalogs_for_each_locale(sample_project: Path) -> None:
             "-l",
             "zh",
             "--source",
-            ".",
+            "./src",
         ]
     )
 
@@ -41,7 +41,7 @@ def test_init_uses_default_domain_environment_variable(
     monkeypatch,
 ) -> None:
     monkeypatch.setenv("DEFAULT_DOMAIN", "backend")
-    write_source(sample_project / "app.py", ["hello"])
+    write_source(sample_project / "src" / "app.py", ["hello"])
 
     exit_code = main(
         [
@@ -51,7 +51,7 @@ def test_init_uses_default_domain_environment_variable(
             "-l",
             "zh",
             "--source",
-            ".",
+            "./src",
         ]
     )
 
@@ -62,6 +62,7 @@ def test_init_uses_default_domain_environment_variable(
 
 def write_source(path: Path, messages: list[str]) -> None:
     body = "\n".join(f'print(_("{message}"))' for message in messages)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "from gettext import gettext as _\n\n"
         f"{body}\n",

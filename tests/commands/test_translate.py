@@ -14,8 +14,8 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
     sample_project: Path,
     monkeypatch,
 ) -> None:
-    write_source(sample_project / "app.py", ["hello", "welcome"])
-    write_source(sample_project / "admin.py", ["save"])
+    write_source(sample_project / "src" / "app.py", ["hello", "welcome"])
+    write_source(sample_project / "src" / "admin.py", ["save"])
 
     assert (
         main(
@@ -28,7 +28,7 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
                 "-l",
                 "zh",
                 "--source",
-                ".",
+                "./src",
             ]
         )
         == 0
@@ -122,11 +122,13 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
             "-d",
             "locales",
             "--source",
-            ".",
+            "./src",
             "--model",
             "gpt-test",
             "--base-url",
             "https://example.com/v1",
+            "--api-key",
+            "test-key",
         ]
     )
 
@@ -135,7 +137,7 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
         {
             "model": "gpt-test",
             "base_url": "https://example.com/v1",
-            "api_key": None,
+            "api_key": "test-key",
             "system_prompt": "Do not translate Autolang.\nPrefer concise UI text.\n",
             "timeout": 60.0,
             "temperature": 0.0,
@@ -144,25 +146,25 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
     assert captured_calls == [
         {
             "target_language": "en",
-            "source_file": "admin.py",
+            "source_file": "src/admin.py",
             "entries": [("save", None, None, None, None)],
             "references": [],
         },
         {
             "target_language": "en",
-            "source_file": "app.py",
+            "source_file": "src/app.py",
             "entries": [("welcome", None, None, None, None)],
             "references": [("hello", None, "Hello", None, None)],
         },
         {
             "target_language": "zh",
-            "source_file": "admin.py",
+            "source_file": "src/admin.py",
             "entries": [("save", None, None, None, None)],
             "references": [],
         },
         {
             "target_language": "zh",
-            "source_file": "app.py",
+            "source_file": "src/app.py",
             "entries": [("welcome", None, None, None, None)],
             "references": [("hello", None, "你好", None, None)],
         },
@@ -198,7 +200,7 @@ def test_translate_skips_when_no_untranslated_entries(
     sample_project: Path,
     monkeypatch,
 ) -> None:
-    write_source(sample_project / "app.py", ["hello"])
+    write_source(sample_project / "src" / "app.py", ["hello"])
     assert (
         main(
             [
@@ -208,7 +210,7 @@ def test_translate_skips_when_no_untranslated_entries(
                 "-l",
                 "zh",
                 "--source",
-                ".",
+                "./src",
             ]
         )
         == 0
@@ -237,11 +239,13 @@ def test_translate_skips_when_no_untranslated_entries(
             "-d",
             "locales",
             "--source",
-            ".",
+            "./src",
             "--model",
             "gpt-test",
             "--base-url",
             "https://example.com/v1",
+            "--api-key",
+            "test-key",
         ]
     )
 
@@ -257,7 +261,7 @@ def test_translate_backfills_plural_entries(
     sample_project: Path,
     monkeypatch,
 ) -> None:
-    write_plural_source(sample_project / "counter.py")
+    write_plural_source(sample_project / "src" / "counter.py")
 
     assert (
         main(
@@ -268,7 +272,7 @@ def test_translate_backfills_plural_entries(
                 "-l",
                 "zh",
                 "--source",
-                ".",
+                "./src",
             ]
         )
         == 0
@@ -312,11 +316,13 @@ def test_translate_backfills_plural_entries(
             "-d",
             "locales",
             "--source",
-            ".",
+            "./src",
             "--model",
             "gpt-test",
             "--base-url",
             "https://example.com/v1",
+            "--api-key",
+            "test-key",
         ]
     )
 
@@ -324,7 +330,7 @@ def test_translate_backfills_plural_entries(
     assert captured_calls == [
         {
             "target_language": "zh",
-            "source_file": "counter.py",
+            "source_file": "src/counter.py",
             "entries": [("{count} file", "{count} files", 1)],
         }
     ]
@@ -338,6 +344,7 @@ def test_translate_backfills_plural_entries(
 
 def write_source(path: Path, messages: list[str]) -> None:
     body = "\n".join(f'print(_("{message}"))' for message in messages)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "from gettext import gettext as _\n\n"
         f"{body}\n",
@@ -346,6 +353,7 @@ def write_source(path: Path, messages: list[str]) -> None:
 
 
 def write_plural_source(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "from gettext import ngettext\n\n"
         "def render(count: int) -> str:\n"

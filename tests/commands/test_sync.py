@@ -12,7 +12,7 @@ from autolang.cli import main
 def test_sync_adds_new_messages_and_preserves_existing_translations(
     sample_project: Path,
 ) -> None:
-    write_source(sample_project / "app.py", ["hello"])
+    write_source(sample_project / "src" / "app.py", ["hello"])
     assert (
         main(
             [
@@ -24,7 +24,7 @@ def test_sync_adds_new_messages_and_preserves_existing_translations(
                 "-l",
                 "zh",
                 "--source",
-                ".",
+                "./src",
             ]
         )
         == 0
@@ -41,8 +41,8 @@ def test_sync_adds_new_messages_and_preserves_existing_translations(
         "你好",
     )
 
-    write_source(sample_project / "app.py", ["hello", "welcome"])
-    exit_code = main(["sync", "-d", "locales", "--source", "."])
+    write_source(sample_project / "src" / "app.py", ["hello", "welcome"])
+    exit_code = main(["sync", "-d", "locales", "--source", "./src"])
 
     assert exit_code == 0
     assert get_translation(
@@ -64,7 +64,7 @@ def test_sync_adds_new_messages_and_preserves_existing_translations(
 
 
 def test_sync_removes_deleted_messages_from_all_locales(sample_project: Path) -> None:
-    write_source(sample_project / "app.py", ["hello", "welcome"])
+    write_source(sample_project / "src" / "app.py", ["hello", "welcome"])
     assert (
         main(
             [
@@ -76,14 +76,14 @@ def test_sync_removes_deleted_messages_from_all_locales(sample_project: Path) ->
                 "-l",
                 "zh",
                 "--source",
-                ".",
+                "./src",
             ]
         )
         == 0
     )
 
-    write_source(sample_project / "app.py", ["welcome"])
-    exit_code = main(["sync", "-d", "locales", "--source", "."])
+    write_source(sample_project / "src" / "app.py", ["welcome"])
+    exit_code = main(["sync", "-d", "locales", "--source", "./src"])
 
     assert exit_code == 0
     assert not has_message(
@@ -106,6 +106,7 @@ def test_sync_removes_deleted_messages_from_all_locales(sample_project: Path) ->
 
 def write_source(path: Path, messages: list[str]) -> None:
     body = "\n".join(f'print(_("{message}"))' for message in messages)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "from gettext import gettext as _\n\n"
         f"{body}\n",
