@@ -1,0 +1,70 @@
+# Chinese translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-03-19 21:05+0800\n"
+"PO-Revision-Date: 2026-03-19 21:04+0800\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh\n"
+"Language-Team: zh <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: src/autolang/cli.py:21
+msgid "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
+msgstr ""
+
+#: src/autolang/cli.py:29
+msgid "Initialize project configuration and translation assets."
+msgstr ""
+
+#: src/autolang/cli.py:35
+msgid "Sync gettext/Babel catalog files."
+msgstr ""
+
+#: src/autolang/cli.py:41
+msgid "Translate pending catalog entries through a compatible API."
+msgstr ""
+
+#: src/autolang/cli.py:69 src/autolang/cli.py:93 src/autolang/cli.py:109
+msgid "Directory used to store POT and PO files."
+msgstr ""
+
+#: src/autolang/cli.py:77
+msgid "Target locale to initialize. Repeat for multiple locales."
+msgstr ""
+
+#: src/autolang/cli.py:84 src/autolang/cli.py:100
+msgid "Source path to scan for gettext messages. Repeat for multiple paths."
+msgstr ""
+
+#: src/autolang/cli.py:116
+msgid "Source path hint used to scope translation batches by file."
+msgstr ""
+
+#: src/autolang/cli.py:121
+msgid "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
+msgstr ""
+
+#: src/autolang/cli.py:130
+msgid ""
+"OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
+"OPENAI_BASE_URL."
+msgstr ""
+
+#: src/autolang/cli.py:137
+msgid "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
+msgstr ""
+
+#: src/autolang/cli.py:143
+msgid "Maximum untranslated entries to send in one model request."
+msgstr ""
+

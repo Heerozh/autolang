@@ -66,6 +66,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         "-d",
         "--directory",
         default="i18n",
+        metavar="i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
@@ -81,6 +82,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         dest="sources",
         action="append",
         default=["./src"],
+        metavar="./src",
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
@@ -90,6 +92,7 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
         "-d",
         "--directory",
         default="i18n",
+        metavar="i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
@@ -97,6 +100,7 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
         dest="sources",
         action="append",
         default=["./src"],
+        metavar="./src",
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
@@ -106,6 +110,7 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         "-d",
         "--directory",
         default="i18n",
+        metavar="i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
@@ -113,11 +118,13 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         dest="sources",
         action="append",
         default=["./src"],
+        metavar="./src",
         help=_("Source path hint used to scope translation batches by file."),
     )
     command_parser.add_argument(
         "--model",
         default=os.environ.get("AUTOLANG_MODEL") or os.environ.get("OPENAI_MODEL"),
+        required=True,
         help=_("Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."),
     )
     command_parser.add_argument(
@@ -126,6 +133,7 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         default=(
             os.environ.get("AUTOLANG_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
         ),
+        required=True,
         help=_(
             "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or OPENAI_BASE_URL."
         ),
@@ -134,6 +142,7 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         "--api-key",
         dest="api_key",
         default=os.environ.get("AUTOLANG_API_KEY") or os.environ.get("OPENAI_API_KEY"),
+        required=True,
         help=_("API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."),
     )
     command_parser.add_argument(
