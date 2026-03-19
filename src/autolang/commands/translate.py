@@ -9,11 +9,13 @@ from pathlib import Path
 import polib
 
 from autolang.babel import discover_locales, locale_catalog_path
+from autolang.config import get_domain
 from autolang.translator import OpenAITranslator, ReferenceTranslation, TranslationInput
 
 
 def run(args: Namespace) -> int:
     """Translate untranslated PO entries grouped by locale and source file."""
+    domain = get_domain()
     if not args.model:
         raise RuntimeError(
             "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
@@ -35,7 +37,7 @@ def run(args: Namespace) -> int:
     )
 
     for locale in discover_locales(args.directory):
-        po_path = locale_catalog_path(args.directory, locale, args.domain)
+        po_path = locale_catalog_path(args.directory, locale, domain)
         if not po_path.exists():
             continue
 

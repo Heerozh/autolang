@@ -66,12 +66,6 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         help="Directory used to store POT and PO files.",
     )
     command_parser.add_argument(
-        "-D",
-        "--domain",
-        default="messages",
-        help="Catalog domain name.",
-    )
-    command_parser.add_argument(
         "-l",
         "--locale",
         dest="locales",
@@ -96,12 +90,6 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
         help="Directory used to store POT and PO files.",
     )
     command_parser.add_argument(
-        "-D",
-        "--domain",
-        default="messages",
-        help="Catalog domain name.",
-    )
-    command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
@@ -116,12 +104,6 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         "--directory",
         default="locales",
         help="Directory used to store POT and PO files.",
-    )
-    command_parser.add_argument(
-        "-D",
-        "--domain",
-        default="messages",
-        help="Catalog domain name.",
     )
     command_parser.add_argument(
         "--source",

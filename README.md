@@ -48,12 +48,11 @@ uv run autolang --help
 初始化目标语言的目录结构和 `po` 文件。命令会先调用 `pybabel extract` 生成 `pot`，再对每个语言执行 `pybabel init`。
 
 ```bash
-uv run autolang init -d locales -D messages -l en -l zh --source .
+uv run autolang init -d locales -l en -l zh --source .
 ```
 
 常用参数：
 - `-d, --directory`: 语言目录，默认 `locales`
-- `-D, --domain`: gettext domain，默认 `messages`
 - `-l, --locale`: 目标语言，可重复传入
 - `--source`: 需要扫描的源码路径，可重复传入
 
@@ -107,7 +106,6 @@ uv run autolang translate \
 
 常用参数：
 - `-d, --directory`: 语言目录，默认 `locales`
-- `-D, --domain`: gettext domain，默认 `messages`
 - `--source`: 来源路径提示，可重复传入
 - `--model`: 模型名
 - `--base-url`: OpenAI 兼容接口地址
@@ -132,6 +130,22 @@ export AUTOLANG_API_KEY=your-api-key
 export OPENAI_MODEL=gpt-4.1-mini
 export OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
 export OPENAI_API_KEY=your-api-key
+```
+
+## Domain 配置
+
+项目对用户侧隐藏了 gettext domain，不再通过 CLI 传 `-D/--domain`。
+
+内部统一从 `DEFAULT_DOMAIN` 环境变量读取；未设置时默认使用 `messages`。
+
+```bash
+export DEFAULT_DOMAIN=messages
+```
+
+如果你确实需要另一套 catalog 文件名，可以在执行命令前临时切换：
+
+```bash
+DEFAULT_DOMAIN=backend uv run autolang init -d locales -l zh --source .
 ```
 
 ## 自定义提示词
