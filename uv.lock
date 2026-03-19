@@ -33,12 +33,6 @@ name = "autolang"
 source = { editable = "." }
 dependencies = [
     { name = "babel" },
-    { name = "executing" },
-]
-
-[package.optional-dependencies]
-cli = [
-    { name = "basedpyright" },
     { name = "tqdm" },
 ]
 
@@ -56,11 +50,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "babel", specifier = ">=2.18.0" },
-    { name = "basedpyright", marker = "extra == 'cli'", specifier = ">=1.38.2" },
-    { name = "executing", specifier = ">=2.2.1" },
-    { name = "tqdm", marker = "extra == 'cli'", specifier = ">=4.67.3" },
+    { name = "tqdm", specifier = ">=4.67.3" },
 ]
-provides-extras = ["cli"]
 
 [package.metadata.requires-dev]
 dev = [
