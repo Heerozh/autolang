@@ -80,7 +80,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         "--source",
         dest="sources",
         action="append",
-        default=["."],
+        default=["./src"],
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
@@ -96,7 +96,7 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
         "--source",
         dest="sources",
         action="append",
-        default=["."],
+        default=["./src"],
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
@@ -112,7 +112,7 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         "--source",
         dest="sources",
         action="append",
-        default=["."],
+        default=["./src"],
         help=_("Source path hint used to scope translation batches by file."),
     )
     command_parser.add_argument(
@@ -124,8 +124,7 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         "--base-url",
         dest="base_url",
         default=(
-            os.environ.get("AUTOLANG_BASE_URL")
-            or os.environ.get("OPENAI_BASE_URL")
+            os.environ.get("AUTOLANG_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
         ),
         help=_(
             "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or OPENAI_BASE_URL."
