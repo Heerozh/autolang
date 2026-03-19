@@ -1,4 +1,4 @@
-# English translations for PROJECT.
+# French translations for PROJECT.
 # Copyright (C) 2026 ORGANIZATION
 # This file is distributed under the same license as the PROJECT project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
@@ -8,180 +8,197 @@ msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2026-03-20 00:30+0800\n"
-"PO-Revision-Date: 2026-03-19 21:04+0800\n"
+"PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: en <LL@li.org>\n"
-"Language: en\n"
+"Language-Team: fr <LL@li.org>\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.18.0\n"
 
 #: src/autolang/cli.py:22
 msgid "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
-msgstr "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
+msgstr ""
+"Utilitaires CLI pour les flux de traduction compatibles avec "
+"gettext/Babel/OpenAI."
 
 #: src/autolang/cli.py:30
 msgid "Initialize project configuration and translation assets."
-msgstr "Initialize project configuration and translation assets."
+msgstr ""
+"Initialiser la configuration du projet et les ressources de traduction."
 
 #: src/autolang/cli.py:36
 msgid "Sync gettext/Babel catalog files."
-msgstr "Sync gettext/Babel catalog files."
+msgstr "Synchroniser les fichiers de catalogue gettext/Babel."
 
 #: src/autolang/cli.py:42
 msgid "Translate pending catalog entries through a compatible API."
-msgstr "Translate pending catalog entries through a compatible API."
+msgstr "Traduire les entrées de catalogue en attente via une API compatible."
 
 #: src/autolang/cli.py:71 src/autolang/cli.py:97 src/autolang/cli.py:115
 msgid "Directory used to store POT and PO files."
-msgstr "Directory used to store POT and PO files."
+msgstr "Répertoire utilisé pour stocker les fichiers POT et PO."
 
 #: src/autolang/cli.py:79
 msgid "Target locale to initialize. Repeat for multiple locales."
-msgstr "Target locale to initialize. Repeat for multiple locales."
+msgstr "Locale cible à initialiser. Répéter pour plusieurs locales."
 
 #: src/autolang/cli.py:87 src/autolang/cli.py:105
 msgid "Source path to scan for gettext messages. Repeat for multiple paths."
-msgstr "Source path to scan for gettext messages. Repeat for multiple paths."
+msgstr ""
+"Chemin source à analyser pour les messages gettext. Répéter pour plusieurs "
+"chemins."
 
 #: src/autolang/cli.py:123
 msgid "Source path hint used to scope translation batches by file."
-msgstr "Source path hint used to scope translation batches by file."
+msgstr ""
+"Indication de chemin source utilisée pour délimiter les lots de traduction "
+"par fichier."
 
 #: src/autolang/cli.py:129
 msgid "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
-msgstr "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
+msgstr "Nom du modèle. Par défaut : AUTOLANG_MODEL ou OPENAI_MODEL."
 
 #: src/autolang/cli.py:139
 msgid ""
 "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
 "OPENAI_BASE_URL."
 msgstr ""
-"OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
+"URL de base de l'API compatible OpenAI. Par défaut : AUTOLANG_BASE_URL ou "
 "OPENAI_BASE_URL."
 
 #: src/autolang/cli.py:147
 msgid "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
-msgstr "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
+msgstr "Clé API. Par défaut : AUTOLANG_API_KEY ou OPENAI_API_KEY."
 
 #: src/autolang/cli.py:153
 msgid "Maximum untranslated entries to send in one model request."
-msgstr "Maximum untranslated entries to send in one model request."
+msgstr ""
+"Nombre maximum d'entrées non traduites à envoyer dans une requête de modèle."
 
 #: src/autolang/translator.py:207
 #, python-brace-format
 msgid "Translation request failed with HTTP {code}: {details}"
-msgstr "Translation request failed with HTTP {code}: {details}"
+msgstr "La requête de traduction a échoué avec HTTP {code} : {details}"
 
 #: src/autolang/translator.py:213
 #, python-brace-format
 msgid "Translation request failed: {reason}"
-msgstr "Translation request failed: {reason}"
+msgstr "La requête de traduction a échoué : {reason}"
 
 #: src/autolang/translator.py:219
 msgid "Translation API returned invalid JSON."
-msgstr "Translation API returned invalid JSON."
+msgstr "L'API de traduction a renvoyé un JSON invalide."
 
 #: src/autolang/translator.py:222
 msgid "Translation API response must be a JSON object."
-msgstr "Translation API response must be a JSON object."
+msgstr "La réponse de l'API de traduction doit être un objet JSON."
 
 #: src/autolang/translator.py:236
 msgid "Model response must contain a translations list."
-msgstr "Model response must contain a translations list."
+msgstr "La réponse du modèle doit contenir une liste de traductions."
 
 #: src/autolang/translator.py:239
 msgid "Model response count does not match the number of requested entries."
-msgstr "Model response count does not match the number of requested entries."
+msgstr ""
+"Le nombre de réponses du modèle ne correspond pas au nombre d'entrées "
+"demandées."
 
 #: src/autolang/translator.py:245
 msgid "Each translation item must be an object."
-msgstr "Each translation item must be an object."
+msgstr "Chaque élément de traduction doit être un objet."
 
 #: src/autolang/translator.py:248
 msgid "Model response indexes must match the original request order."
-msgstr "Model response indexes must match the original request order."
+msgstr ""
+"Les index de la réponse du modèle doivent correspondre à l'ordre de la "
+"requête originale."
 
 #: src/autolang/translator.py:255
 msgid "Singular translation items must contain text."
-msgstr "Singular translation items must contain text."
+msgstr "Les éléments de traduction singuliers doivent contenir du texte."
 
 #: src/autolang/translator.py:263
 msgid "Plural translation items must contain plural_texts."
-msgstr "Plural translation items must contain plural_texts."
+msgstr "Les éléments de traduction pluriels doivent contenir plural_texts."
 
 #: src/autolang/translator.py:268
 msgid "Plural translation inputs must define expected_plural_forms."
-msgstr "Plural translation inputs must define expected_plural_forms."
+msgstr ""
+"Les entrées de traduction plurielle doivent définir expected_plural_forms."
 
 #: src/autolang/translator.py:272
 msgid ""
 "Plural translation count does not match the target locale plural forms."
 msgstr ""
-"Plural translation count does not match the target locale plural forms."
+"Le nombre de traductions pluriel ne correspond pas aux formes plurielles de "
+"la locale cible."
 
 #: src/autolang/translator.py:276
 msgid "Plural translation items must contain only string forms."
-msgstr "Plural translation items must contain only string forms."
+msgstr ""
+"Les éléments de traduction pluriels ne doivent contenir que des formes de "
+"chaîne."
 
 #: src/autolang/translator.py:284
 msgid "Translation API response is missing choices."
-msgstr "Translation API response is missing choices."
+msgstr "La réponse de l'API de traduction manque de choix."
 
 #: src/autolang/translator.py:288
 msgid "Translation API response choice is invalid."
-msgstr "Translation API response choice is invalid."
+msgstr "Le choix de la réponse de l'API de traduction est invalide."
 
 #: src/autolang/translator.py:292
 msgid "Translation API response is missing a message."
-msgstr "Translation API response is missing a message."
+msgstr "La réponse de l'API de traduction manque d'un message."
 
 #: src/autolang/translator.py:308
 msgid "Translation API message content is missing text."
-msgstr "Translation API message content is missing text."
+msgstr "Le contenu du message de l'API de traduction manque de texte."
 
 #: src/autolang/translator.py:317
 msgid "Model response did not contain JSON."
-msgstr "Model response did not contain JSON."
+msgstr "La réponse du modèle ne contenait pas de JSON."
 
 #: src/autolang/translator.py:321
 msgid "Model response did not contain valid JSON."
-msgstr "Model response did not contain valid JSON."
+msgstr "La réponse du modèle ne contenait pas de JSON valide."
 
 #: src/autolang/translator.py:324
 msgid "Model response JSON must be an object."
-msgstr "Model response JSON must be an object."
+msgstr "Le JSON de la réponse du modèle doit être un objet."
 
 #: src/autolang/commands/translate.py:23
-#, fuzzy
 msgid ""
 "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
 msgstr ""
-"Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+"Configuration du modèle manquante. Définissez --model ou "
+"AUTOLANG_MODEL/OPENAI_MODEL."
 
 #: src/autolang/commands/translate.py:27
-#, fuzzy
 msgid ""
 "Missing base URL configuration. Set --base-url or "
 "AUTOLANG_BASE_URL/OPENAI_BASE_URL."
 msgstr ""
-"Missing base URL configuration. Set --base-url or "
+"Configuration de l'URL de base manquante. Définissez --base-url ou "
 "AUTOLANG_BASE_URL/OPENAI_BASE_URL."
 
 #: src/autolang/commands/translate.py:30
 msgid "--batch-size must be greater than 0."
-msgstr "--batch-size must be greater than 0."
+msgstr "--batch-size doit être supérieur à 0."
 
 #: src/autolang/commands/translate.py:100
 msgid "Singular translation response is missing text."
-msgstr "Singular translation response is missing text."
+msgstr "La réponse de traduction singulière ne contient pas de texte."
 
 #: src/autolang/commands/translate.py:105
 msgid "Plural translation response is missing plural_texts."
-msgstr "Plural translation response is missing plural_texts."
+msgstr "La réponse de traduction plurielle ne contient pas de plural_texts."
 
 #: src/autolang/commands/translate.py:278
 msgid "Plural translation count does not match target plural slots."
-msgstr "Plural translation count does not match target plural slots."
+msgstr ""
+"Le nombre de traductions plurielles ne correspond pas aux emplacements "
+"pluriels cibles."
