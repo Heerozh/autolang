@@ -70,7 +70,6 @@ def translate_catalog(
     grouped_entries = collect_untranslated_entries(
         catalog,
         source_roots=source_roots,
-        plural_indexes=plural_indexes,
     )
     if not grouped_entries:
         return False
@@ -113,12 +112,11 @@ def collect_untranslated_entries(
     catalog: polib.POFile,
     *,
     source_roots: set[str],
-    plural_indexes: list[int],
 ) -> dict[str, list[polib.POEntry]]:
-    """Collect untranslated singular entries grouped by source file."""
+    """Collect untranslated entries grouped by source file."""
     grouped: dict[str, list[polib.POEntry]] = defaultdict(list)
     for entry in catalog:
-        if not should_translate_entry(entry, plural_indexes=plural_indexes):
+        if not should_translate_entry(entry):
             continue
         source_file = select_source_file(entry, source_roots=source_roots)
         grouped[source_file].append(entry)
@@ -134,7 +132,7 @@ def collect_reference_translations(
     """Collect translated entries from the same source file as context."""
     references: list[ReferenceTranslation] = []
     for entry in catalog:
-        if not is_translated_entry(entry, plural_indexes=plural_indexes):
+        if not is_translated_entry(entry):
             continue
         if normalize_occurrence(primary_occurrence(entry)) != source_file:
             continue
@@ -164,32 +162,24 @@ def collect_reference_translations(
 
 def should_translate_entry(
     entry: polib.POEntry,
-    *,
-    plural_indexes: list[int],
 ) -> bool:
     """Return whether a PO entry should be sent to the model."""
     if entry.obsolete:
         return False
     if entry.msgid == "":
         return False
-    if not entry.msgid_plural:
-        return not entry.translated()
-    return not plural_entry_is_complete(entry, plural_indexes=plural_indexes)
+    return not entry.translated()
 
 
 def is_translated_entry(
     entry: polib.POEntry,
-    *,
-    plural_indexes: list[int],
 ) -> bool:
-    """Return whether the entry is a complete translated message."""
+    """Return whether the entry is translated."""
     if entry.obsolete:
         return False
     if entry.msgid == "":
         return False
-    if not entry.msgid_plural:
-        return entry.translated() and bool(entry.msgstr)
-    return plural_entry_is_complete(entry, plural_indexes=plural_indexes)
+    return entry.translated()
 
 
 def primary_occurrence(entry: polib.POEntry) -> str:
@@ -282,17 +272,6 @@ def apply_plural_translation(
         raise RuntimeError("Plural translation count does not match target plural slots.")
     for index, text in zip(plural_indexes, plural_texts, strict=True):
         entry.msgstr_plural[index] = text
-
-
-def plural_entry_is_complete(
-    entry: polib.POEntry,
-    *,
-    plural_indexes: list[int],
-) -> bool:
-    """Return whether all target plural slots are populated."""
-    if not entry.msgid_plural:
-        return bool(entry.msgstr)
-    return all(bool(entry.msgstr_plural.get(index, "")) for index in plural_indexes)
 
 
 def get_plural_indexes(catalog: polib.POFile) -> list[int]:
