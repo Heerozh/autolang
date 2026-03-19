@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from argparse import Namespace
-from pathlib import Path
 import re
+from argparse import Namespace
+from collections import defaultdict
+from pathlib import Path
 
 import polib
 
@@ -72,7 +72,7 @@ def translate_catalog(
         source_roots=source_roots,
     )
     if not grouped_entries:
-        return False
+        return False 
 
     translated_any = False
     for source_file, entries in sorted(grouped_entries.items()):

@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any
 from urllib import error, request
 
-
 DEFAULT_SYSTEM_PROMPT = """You are a translation engine for gettext strings in a Python project.
 
 Translate every input string into the requested target language.

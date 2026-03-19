@@ -32,7 +32,9 @@ def discover_locales(directory: str | Path) -> list[str]:
     return sorted(locales)
 
 
-def extract_catalog(*, directory: str | Path, domain: str, sources: Sequence[str]) -> int:
+def extract_catalog(
+    *, directory: str | Path, domain: str, sources: Sequence[str]
+) -> int:
     """Extract messages from source files into the domain POT file."""
     output_dir = Path(directory)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -63,7 +65,9 @@ def init_catalog(*, directory: str | Path, domain: str, locale: str) -> int:
     )
 
 
-def update_catalogs(*, directory: str | Path, domain: str, locales: Sequence[str]) -> int:
+def update_catalogs(
+    *, directory: str | Path, domain: str, locales: Sequence[str]
+) -> int:
     """Update locale catalogs from the extracted POT file."""
     for locale in locales:
         exit_code = run_babel(
