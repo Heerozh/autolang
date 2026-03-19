@@ -1,2 +1,0 @@
-"Report {report_id:06d}: user {user!r:>{name_width}} in {city.title()} spent {fmt.currency(total, currency)} on {fmt.datetime(ordered_at, format=medium_format)} with success rate {success_rate:.2%} after {attempts} attempts." = """
-Informe {report_id:06d}: usuario {user!r:>{name_width}} en {city.title()} gasto {fmt.currency(total, currency)} el {fmt.datetime(ordered_at, format=medium_format)} con tasa de exito {success_rate:.2%} tras {attempts} intentos."""
