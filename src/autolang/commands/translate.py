@@ -8,6 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import polib
+from tqdm import tqdm
 
 from autolang.babel import compile_catalogs, discover_locales, locale_catalog_path
 from autolang.config import get_domain
@@ -45,15 +46,14 @@ def run(args: Namespace) -> int:
             continue
 
         catalog = polib.pofile(str(po_path))
-        translated_any = translate_catalog(
+        translate_catalog(
             catalog=catalog,
+            po_path=po_path,
             locale=locale,
             sources=args.sources,
             translator=translator,
             batch_size=args.batch_size,
         )
-        if translated_any:
-            catalog.save(str(po_path))
 
     exit_code = compile_catalogs(directory=args.directory, domain=domain, locales=locales)
     if exit_code != 0:
@@ -65,6 +65,7 @@ def run(args: Namespace) -> int:
 def translate_catalog(
     *,
     catalog: polib.POFile,
+    po_path: Path,
     locale: str,
     sources: list[str],
     translator: OpenAITranslator,
@@ -78,38 +79,42 @@ def translate_catalog(
         source_roots=source_roots,
     )
     if not grouped_entries:
-        return False 
+        return False
 
+    total = sum(len(entries) for entries in grouped_entries.values())
     translated_any = False
-    for source_file, entries in sorted(grouped_entries.items()):
-        references = collect_reference_translations(
-            catalog,
-            source_file=source_file,
-            plural_indexes=plural_indexes,
-        )
-        for batch in batched(entries, batch_size):
-            outputs = translator.translate_batch(
-                target_language=locale,
+    with tqdm(total=total, desc=locale, unit=_("entry")) as progress:
+        for source_file, entries in sorted(grouped_entries.items()):
+            references = collect_reference_translations(
+                catalog,
                 source_file=source_file,
-                entries=build_translation_inputs(batch, plural_indexes=plural_indexes),
-                references=references,
+                plural_indexes=plural_indexes,
             )
-            for entry, output in zip(batch, outputs, strict=True):
-                if not entry.msgid_plural:
-                    if output.text is None:
-                        raise RuntimeError(_("Singular translation response is missing text."))
-                    entry.msgstr = output.text
-                else:
-                    if output.plural_texts is None:
-                        raise RuntimeError(
-                            _("Plural translation response is missing plural_texts.")
+            for batch in batched(entries, batch_size):
+                outputs = translator.translate_batch(
+                    target_language=locale,
+                    source_file=source_file,
+                    entries=build_translation_inputs(batch, plural_indexes=plural_indexes),
+                    references=references,
+                )
+                for entry, output in zip(batch, outputs, strict=True):
+                    if not entry.msgid_plural:
+                        if output.text is None:
+                            raise RuntimeError(_("Singular translation response is missing text."))
+                        entry.msgstr = output.text
+                    else:
+                        if output.plural_texts is None:
+                            raise RuntimeError(
+                                _("Plural translation response is missing plural_texts.")
+                            )
+                        apply_plural_translation(
+                            entry,
+                            plural_texts=output.plural_texts,
+                            plural_indexes=plural_indexes,
                         )
-                    apply_plural_translation(
-                        entry,
-                        plural_texts=output.plural_texts,
-                        plural_indexes=plural_indexes,
-                    )
+                progress.update(len(batch))
                 translated_any = True
+                catalog.save(str(po_path))
 
     return translated_any
 
