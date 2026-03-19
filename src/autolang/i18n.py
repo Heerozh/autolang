@@ -22,7 +22,6 @@ def get_system_language() -> str:
 
 
 def get_translator(language=None, directory: str = "i18n"):
-    print(language)
     if language:
         return gettext.translation(
             get_domain(),

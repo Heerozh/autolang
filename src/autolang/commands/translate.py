@@ -11,6 +11,7 @@ import polib
 
 from autolang.babel import compile_catalogs, discover_locales, locale_catalog_path
 from autolang.config import get_domain
+from autolang.i18n import _
 from autolang.translator import OpenAITranslator, ReferenceTranslation, TranslationInput
 
 
@@ -19,14 +20,14 @@ def run(args: Namespace) -> int:
     domain = get_domain()
     if not args.model:
         raise RuntimeError(
-            "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+            _("Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL.")
         )
     if not args.base_url:
         raise RuntimeError(
-            "Missing base URL configuration. Set --base-url or AUTOLANG_BASE_URL/OPENAI_BASE_URL."
+            _("Missing base URL configuration. Set --base-url or AUTOLANG_BASE_URL/OPENAI_BASE_URL.")
         )
     if args.batch_size <= 0:
-        raise RuntimeError("--batch-size must be greater than 0.")
+        raise RuntimeError(_("--batch-size must be greater than 0."))
 
     prompt_path = Path(args.directory) / "PROMPT.md"
     system_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else None
@@ -96,12 +97,12 @@ def translate_catalog(
             for entry, output in zip(batch, outputs, strict=True):
                 if not entry.msgid_plural:
                     if output.text is None:
-                        raise RuntimeError("Singular translation response is missing text.")
+                        raise RuntimeError(_("Singular translation response is missing text."))
                     entry.msgstr = output.text
                 else:
                     if output.plural_texts is None:
                         raise RuntimeError(
-                            "Plural translation response is missing plural_texts."
+                            _("Plural translation response is missing plural_texts.")
                         )
                     apply_plural_translation(
                         entry,
@@ -274,7 +275,7 @@ def apply_plural_translation(
 ) -> None:
     """Write plural translation forms back into a PO entry."""
     if len(plural_texts) != len(plural_indexes):
-        raise RuntimeError("Plural translation count does not match target plural slots.")
+        raise RuntimeError(_("Plural translation count does not match target plural slots."))
     for index, text in zip(plural_indexes, plural_texts, strict=True):
         entry.msgstr_plural[index] = text
 

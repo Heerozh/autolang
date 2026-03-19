@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 from urllib import error, request
 
+from autolang.i18n import _
+
 DEFAULT_SYSTEM_PROMPT = """You are a translation engine for gettext strings in a Python project.
 
 Translate every input string into the requested target language.
@@ -202,20 +204,22 @@ class OpenAITranslator:
         except error.HTTPError as exc:
             details = exc.read().decode("utf-8", errors="replace")
             raise TranslatorHTTPError(
-                f"Translation request failed with HTTP {exc.code}: {details}"
+                _("Translation request failed with HTTP {code}: {details}").format(
+                    code=exc.code, details=details
+                )
             ) from exc
         except error.URLError as exc:
             raise TranslatorHTTPError(
-                f"Translation request failed: {exc.reason}"
+                _("Translation request failed: {reason}").format(reason=exc.reason)
             ) from exc
 
         try:
             data = json.loads(response_body)
         except json.JSONDecodeError as exc:
-            raise TranslatorResponseError("Translation API returned invalid JSON.") from exc
+            raise TranslatorResponseError(_("Translation API returned invalid JSON.")) from exc
 
         if not isinstance(data, dict):
-            raise TranslatorResponseError("Translation API response must be a JSON object.")
+            raise TranslatorResponseError(_("Translation API response must be a JSON object."))
         return data
 
     def _parse_outputs(
@@ -229,26 +233,26 @@ class OpenAITranslator:
 
         raw_translations = response_json.get("translations")
         if not isinstance(raw_translations, list):
-            raise TranslatorResponseError("Model response must contain a translations list.")
+            raise TranslatorResponseError(_("Model response must contain a translations list."))
         if len(raw_translations) != len(expected_entries):
             raise TranslatorResponseError(
-                "Model response count does not match the number of requested entries."
+                _("Model response count does not match the number of requested entries.")
             )
 
         outputs: list[TranslationOutput] = []
         for index, item in enumerate(raw_translations):
             if not isinstance(item, dict):
-                raise TranslatorResponseError("Each translation item must be an object.")
+                raise TranslatorResponseError(_("Each translation item must be an object."))
             if item.get("index") != index:
                 raise TranslatorResponseError(
-                    "Model response indexes must match the original request order."
+                    _("Model response indexes must match the original request order.")
                 )
             expected_entry = expected_entries[index]
             if expected_entry.plural_text is None:
                 text = item.get("text")
                 if not isinstance(text, str):
                     raise TranslatorResponseError(
-                        "Singular translation items must contain text."
+                        _("Singular translation items must contain text.")
                     )
                 outputs.append(TranslationOutput(text=text))
                 continue
@@ -256,20 +260,20 @@ class OpenAITranslator:
             plural_texts = item.get("plural_texts")
             if not isinstance(plural_texts, list):
                 raise TranslatorResponseError(
-                    "Plural translation items must contain plural_texts."
+                    _("Plural translation items must contain plural_texts.")
                 )
             expected_plural_forms = expected_entry.expected_plural_forms
             if expected_plural_forms is None:
                 raise TranslatorResponseError(
-                    "Plural translation inputs must define expected_plural_forms."
+                    _("Plural translation inputs must define expected_plural_forms.")
                 )
             if len(plural_texts) != expected_plural_forms:
                 raise TranslatorResponseError(
-                    "Plural translation count does not match the target locale plural forms."
+                    _("Plural translation count does not match the target locale plural forms.")
                 )
             if not all(isinstance(text, str) for text in plural_texts):
                 raise TranslatorResponseError(
-                    "Plural translation items must contain only string forms."
+                    _("Plural translation items must contain only string forms.")
                 )
             outputs.append(TranslationOutput(plural_texts=list(plural_texts)))
         return outputs
@@ -277,15 +281,15 @@ class OpenAITranslator:
     def _extract_message_content(self, response_data: dict[str, Any]) -> str:
         choices = response_data.get("choices")
         if not isinstance(choices, list) or not choices:
-            raise TranslatorResponseError("Translation API response is missing choices.")
+            raise TranslatorResponseError(_("Translation API response is missing choices."))
 
         first_choice = choices[0]
         if not isinstance(first_choice, dict):
-            raise TranslatorResponseError("Translation API response choice is invalid.")
+            raise TranslatorResponseError(_("Translation API response choice is invalid."))
 
         message = first_choice.get("message")
         if not isinstance(message, dict):
-            raise TranslatorResponseError("Translation API response is missing a message.")
+            raise TranslatorResponseError(_("Translation API response is missing a message."))
 
         content = message.get("content")
         if isinstance(content, str):
@@ -301,7 +305,7 @@ class OpenAITranslator:
             if joined:
                 return joined
 
-        raise TranslatorResponseError("Translation API message content is missing text.")
+        raise TranslatorResponseError(_("Translation API message content is missing text."))
 
     def _load_response_json(self, content: str) -> dict[str, Any]:
         try:
@@ -310,14 +314,14 @@ class OpenAITranslator:
             start = content.find("{")
             end = content.rfind("}")
             if start == -1 or end == -1 or end < start:
-                raise TranslatorResponseError("Model response did not contain JSON.")
+                raise TranslatorResponseError(_("Model response did not contain JSON."))
             try:
                 decoded = json.loads(content[start : end + 1])
             except json.JSONDecodeError as exc:
-                raise TranslatorResponseError("Model response did not contain valid JSON.") from exc
+                raise TranslatorResponseError(_("Model response did not contain valid JSON.")) from exc
 
         if not isinstance(decoded, dict):
-            raise TranslatorResponseError("Model response JSON must be an object.")
+            raise TranslatorResponseError(_("Model response JSON must be an object."))
         return decoded
 
     def _chat_completions_url(self) -> str:
