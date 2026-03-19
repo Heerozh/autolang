@@ -65,7 +65,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
     command_parser.add_argument(
         "-d",
         "--directory",
-        default="locales",
+        default="i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
@@ -80,7 +80,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         "--source",
         dest="sources",
         action="append",
-        required=True,
+        default=["."],
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
@@ -89,14 +89,14 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
     command_parser.add_argument(
         "-d",
         "--directory",
-        default="locales",
+        default="i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
-        required=True,
+        default=["."],
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
@@ -105,14 +105,14 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
     command_parser.add_argument(
         "-d",
         "--directory",
-        default="locales",
+        default="i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
-        required=True,
+        default=["."],
         help=_("Source path hint used to scope translation batches by file."),
     )
     command_parser.add_argument(
