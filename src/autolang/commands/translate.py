@@ -9,7 +9,7 @@ from pathlib import Path
 
 import polib
 
-from autolang.babel import discover_locales, locale_catalog_path
+from autolang.babel import compile_catalogs, discover_locales, locale_catalog_path
 from autolang.config import get_domain
 from autolang.translator import OpenAITranslator, ReferenceTranslation, TranslationInput
 
@@ -37,7 +37,8 @@ def run(args: Namespace) -> int:
         system_prompt=system_prompt,
     )
 
-    for locale in discover_locales(args.directory):
+    locales = discover_locales(args.directory)
+    for locale in locales:
         po_path = locale_catalog_path(args.directory, locale, domain)
         if not po_path.exists():
             continue
@@ -52,6 +53,10 @@ def run(args: Namespace) -> int:
         )
         if translated_any:
             catalog.save(str(po_path))
+
+    exit_code = compile_catalogs(directory=args.directory, domain=domain, locales=locales)
+    if exit_code != 0:
+        return exit_code
 
     return 0
 

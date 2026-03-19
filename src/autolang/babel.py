@@ -90,6 +90,29 @@ def update_catalogs(
     return 0
 
 
+def compile_catalogs(
+    *, directory: str | Path, domain: str, locales: Sequence[str]
+) -> int:
+    """Compile locale catalogs from PO to MO binary files."""
+    for locale in locales:
+        po_path = locale_catalog_path(directory, locale, domain)
+        mo_path = po_path.with_suffix(".mo")
+        exit_code = run_babel(
+            [
+                "compile",
+                "--input-file",
+                str(po_path),
+                "--output-file",
+                str(mo_path),
+                "--locale",
+                locale,
+            ]
+        )
+        if exit_code != 0:
+            return exit_code
+    return 0
+
+
 def run_babel(argv: Sequence[str]) -> int:
     """Run the Babel CLI in-process and normalize its exit code."""
     cli = CommandLineInterface()
