@@ -5,11 +5,12 @@ from __future__ import annotations
 import os
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Sequence
-from gettext import gettext as _
 
 from autolang.commands.init import run as run_init
 from autolang.commands.sync import run as run_sync
 from autolang.commands.translate import run as run_translate
+
+from .i18n import _
 
 CommandHandler = Callable[[Namespace], int]
 
