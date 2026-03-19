@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from argparse import Namespace
 from pathlib import Path
+import re
 
 import polib
 
@@ -65,29 +66,44 @@ def translate_catalog(
 ) -> bool:
     """Translate a single locale catalog in place."""
     source_roots = {normalize_source_root(source) for source in sources}
-    grouped_entries = collect_untranslated_entries(catalog, source_roots=source_roots)
+    plural_indexes = get_plural_indexes(catalog)
+    grouped_entries = collect_untranslated_entries(
+        catalog,
+        source_roots=source_roots,
+        plural_indexes=plural_indexes,
+    )
     if not grouped_entries:
         return False
 
     translated_any = False
     for source_file, entries in sorted(grouped_entries.items()):
-        references = collect_reference_translations(catalog, source_file=source_file)
+        references = collect_reference_translations(
+            catalog,
+            source_file=source_file,
+            plural_indexes=plural_indexes,
+        )
         for batch in batched(entries, batch_size):
             outputs = translator.translate_batch(
                 target_language=locale,
                 source_file=source_file,
-                entries=[
-                    TranslationInput(
-                        text=entry.msgid,
-                        context=entry.msgctxt,
-                        comment=build_entry_comment(entry),
-                    )
-                    for entry in batch
-                ],
+                entries=build_translation_inputs(batch, plural_indexes=plural_indexes),
                 references=references,
             )
             for entry, output in zip(batch, outputs, strict=True):
-                entry.msgstr = output.text
+                if not entry.msgid_plural:
+                    if output.text is None:
+                        raise RuntimeError("Singular translation response is missing text.")
+                    entry.msgstr = output.text
+                else:
+                    if output.plural_texts is None:
+                        raise RuntimeError(
+                            "Plural translation response is missing plural_texts."
+                        )
+                    apply_plural_translation(
+                        entry,
+                        plural_texts=output.plural_texts,
+                        plural_indexes=plural_indexes,
+                    )
                 translated_any = True
 
     return translated_any
@@ -97,11 +113,12 @@ def collect_untranslated_entries(
     catalog: polib.POFile,
     *,
     source_roots: set[str],
+    plural_indexes: list[int],
 ) -> dict[str, list[polib.POEntry]]:
     """Collect untranslated singular entries grouped by source file."""
     grouped: dict[str, list[polib.POEntry]] = defaultdict(list)
     for entry in catalog:
-        if not should_translate_entry(entry):
+        if not should_translate_entry(entry, plural_indexes=plural_indexes):
             continue
         source_file = select_source_file(entry, source_roots=source_roots)
         grouped[source_file].append(entry)
@@ -112,44 +129,67 @@ def collect_reference_translations(
     catalog: polib.POFile,
     *,
     source_file: str,
+    plural_indexes: list[int],
 ) -> list[ReferenceTranslation]:
     """Collect translated entries from the same source file as context."""
     references: list[ReferenceTranslation] = []
     for entry in catalog:
-        if not is_translated_singular_entry(entry):
+        if not is_translated_entry(entry, plural_indexes=plural_indexes):
             continue
-        if primary_occurrence(entry) != source_file:
+        if normalize_occurrence(primary_occurrence(entry)) != source_file:
             continue
+        if not entry.msgid_plural:
+            references.append(
+                ReferenceTranslation(
+                    source_text=entry.msgid,
+                    translated_text=entry.msgstr,
+                    context=entry.msgctxt,
+                )
+            )
+            continue
+
         references.append(
             ReferenceTranslation(
                 source_text=entry.msgid,
-                translated_text=entry.msgstr,
                 context=entry.msgctxt,
+                plural_source_text=entry.msgid_plural,
+                translated_plural_texts=[
+                    entry.msgstr_plural.get(index, "")
+                    for index in plural_indexes
+                ],
             )
         )
     return references
 
 
-def should_translate_entry(entry: polib.POEntry) -> bool:
+def should_translate_entry(
+    entry: polib.POEntry,
+    *,
+    plural_indexes: list[int],
+) -> bool:
     """Return whether a PO entry should be sent to the model."""
     if entry.obsolete:
         return False
     if entry.msgid == "":
         return False
-    if entry.msgid_plural:
-        return False
-    return not entry.translated()
+    if not entry.msgid_plural:
+        return not entry.translated()
+    return not plural_entry_is_complete(entry, plural_indexes=plural_indexes)
 
 
-def is_translated_singular_entry(entry: polib.POEntry) -> bool:
-    """Return whether the entry is a translated singular message."""
+def is_translated_entry(
+    entry: polib.POEntry,
+    *,
+    plural_indexes: list[int],
+) -> bool:
+    """Return whether the entry is a complete translated message."""
     if entry.obsolete:
         return False
     if entry.msgid == "":
         return False
-    if entry.msgid_plural:
-        return False
-    return entry.translated() and bool(entry.msgstr)
+    if not entry.msgid_plural:
+        return entry.translated() and bool(entry.msgstr)
+    return plural_entry_is_complete(entry, plural_indexes=plural_indexes)
 
 
 def primary_occurrence(entry: polib.POEntry) -> str:
@@ -199,6 +239,73 @@ def build_entry_comment(entry: polib.POEntry) -> str | None:
     if not comments:
         return None
     return "\n".join(comments)
+
+
+def build_translation_inputs(
+    entries: list[polib.POEntry],
+    *,
+    plural_indexes: list[int],
+) -> list[TranslationInput]:
+    """Convert PO entries into translator request objects."""
+    inputs: list[TranslationInput] = []
+    for entry in entries:
+        if not entry.msgid_plural:
+            inputs.append(
+                TranslationInput(
+                    text=entry.msgid,
+                    context=entry.msgctxt,
+                    comment=build_entry_comment(entry),
+                )
+            )
+            continue
+
+        inputs.append(
+            TranslationInput(
+                text=entry.msgid,
+                plural_text=entry.msgid_plural,
+                expected_plural_forms=len(plural_indexes),
+                context=entry.msgctxt,
+                comment=build_entry_comment(entry),
+            )
+        )
+    return inputs
+
+
+def apply_plural_translation(
+    entry: polib.POEntry,
+    *,
+    plural_texts: list[str],
+    plural_indexes: list[int],
+) -> None:
+    """Write plural translation forms back into a PO entry."""
+    if len(plural_texts) != len(plural_indexes):
+        raise RuntimeError("Plural translation count does not match target plural slots.")
+    for index, text in zip(plural_indexes, plural_texts, strict=True):
+        entry.msgstr_plural[index] = text
+
+
+def plural_entry_is_complete(
+    entry: polib.POEntry,
+    *,
+    plural_indexes: list[int],
+) -> bool:
+    """Return whether all target plural slots are populated."""
+    if not entry.msgid_plural:
+        return bool(entry.msgstr)
+    return all(bool(entry.msgstr_plural.get(index, "")) for index in plural_indexes)
+
+
+def get_plural_indexes(catalog: polib.POFile) -> list[int]:
+    """Return the plural slot indexes required by the target catalog."""
+    plural_forms = catalog.metadata.get("Plural-Forms", "")
+    match = re.search(r"nplurals\s*=\s*(\d+)", plural_forms)
+    if match is None:
+        return [0, 1]
+
+    plural_count = int(match.group(1))
+    if plural_count <= 0:
+        return [0]
+    return list(range(plural_count))
 
 
 def batched(

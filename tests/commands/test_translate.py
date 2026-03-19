@@ -87,11 +87,22 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
                 {
                     "target_language": target_language,
                     "source_file": source_file,
-                    "entries": [(entry.text, entry.context, entry.comment) for entry in entries],
+                    "entries": [
+                        (
+                            entry.text,
+                            entry.plural_text,
+                            entry.expected_plural_forms,
+                            entry.context,
+                            entry.comment,
+                        )
+                        for entry in entries
+                    ],
                     "references": [
                         (
                             reference.source_text,
+                            reference.plural_source_text,
                             reference.translated_text,
+                            reference.translated_plural_texts,
                             reference.context,
                         )
                         for reference in (references or [])
@@ -134,26 +145,26 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
         {
             "target_language": "en",
             "source_file": "admin.py",
-            "entries": [("save", None, None)],
+            "entries": [("save", None, None, None, None)],
             "references": [],
         },
         {
             "target_language": "en",
             "source_file": "app.py",
-            "entries": [("welcome", None, None)],
-            "references": [("hello", "Hello", None)],
+            "entries": [("welcome", None, None, None, None)],
+            "references": [("hello", None, "Hello", None, None)],
         },
         {
             "target_language": "zh",
             "source_file": "admin.py",
-            "entries": [("save", None, None)],
+            "entries": [("save", None, None, None, None)],
             "references": [],
         },
         {
             "target_language": "zh",
             "source_file": "app.py",
-            "entries": [("welcome", None, None)],
-            "references": [("hello", "你好", None)],
+            "entries": [("welcome", None, None, None, None)],
+            "references": [("hello", None, "你好", None, None)],
         },
     ]
 
@@ -242,11 +253,103 @@ def test_translate_skips_when_no_untranslated_entries(
     ) == "你好"
 
 
+def test_translate_backfills_plural_entries(
+    sample_project: Path,
+    monkeypatch,
+) -> None:
+    write_plural_source(sample_project / "counter.py")
+
+    assert (
+        main(
+            [
+                "init",
+                "-d",
+                "locales",
+                "-l",
+                "zh",
+                "--source",
+                ".",
+            ]
+        )
+        == 0
+    )
+
+    captured_calls: list[dict[str, object]] = []
+
+    class FakeTranslator:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def translate_batch(
+            self,
+            *,
+            target_language: str,
+            entries,
+            source_file: str | None = None,
+            references=None,
+        ) -> list[TranslationOutput]:
+            captured_calls.append(
+                {
+                    "target_language": target_language,
+                    "source_file": source_file,
+                    "entries": [
+                        (
+                            entry.text,
+                            entry.plural_text,
+                            entry.expected_plural_forms,
+                        )
+                        for entry in entries
+                    ],
+                }
+            )
+            return [TranslationOutput(plural_texts=["{count} 个文件"]) for _ in entries]
+
+    monkeypatch.setattr("autolang.commands.translate.OpenAITranslator", FakeTranslator)
+
+    exit_code = main(
+        [
+            "translate",
+            "-d",
+            "locales",
+            "--source",
+            ".",
+            "--model",
+            "gpt-test",
+            "--base-url",
+            "https://example.com/v1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured_calls == [
+        {
+            "target_language": "zh",
+            "source_file": "counter.py",
+            "entries": [("{count} file", "{count} files", 1)],
+        }
+    ]
+
+    catalog = polib.pofile(str(sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po"))
+    entry = catalog.find("{count} file")
+    assert entry is not None
+    assert entry.msgid_plural == "{count} files"
+    assert entry.msgstr_plural == {0: "{count} 个文件"}
+
+
 def write_source(path: Path, messages: list[str]) -> None:
     body = "\n".join(f'print(_("{message}"))' for message in messages)
     path.write_text(
         "from gettext import gettext as _\n\n"
         f"{body}\n",
+        encoding="utf-8",
+    )
+
+
+def write_plural_source(path: Path) -> None:
+    path.write_text(
+        "from gettext import ngettext\n\n"
+        "def render(count: int) -> str:\n"
+        '    return ngettext("{count} file", "{count} files", count)\n',
         encoding="utf-8",
     )
 

@@ -20,7 +20,7 @@ Preserve placeholders and technical content exactly unless the surrounding natur
 - Line breaks and meaningful whitespace
 
 When a string is already fully appropriate for the target language, keep it unchanged.
-Return strict JSON only, with the shape {"translations":[{"index":0,"text":"..."}]} and no extra prose."""
+Return strict JSON only. For singular entries use {"index":0,"text":"..."}. For plural entries use {"index":1,"plural_texts":["form 0","form 1"]}. Do not add extra prose."""
 
 
 class TranslatorError(RuntimeError):
@@ -42,13 +42,16 @@ class TranslationInput:
     text: str
     context: str | None = None
     comment: str | None = None
+    plural_text: str | None = None
+    expected_plural_forms: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class TranslationOutput:
     """Single translated text entry."""
 
-    text: str
+    text: str | None = None
+    plural_texts: list[str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,8 +59,10 @@ class ReferenceTranslation:
     """Already translated text used as context for the current batch."""
 
     source_text: str
-    translated_text: str
+    translated_text: str | None = None
     context: str | None = None
+    plural_source_text: str | None = None
+    translated_plural_texts: list[str] | None = None
 
 
 class OpenAITranslator:
@@ -99,7 +104,7 @@ class OpenAITranslator:
             references=references,
         )
         response_data = self._post_json(payload)
-        return self._parse_outputs(response_data, expected_count=len(entries))
+        return self._parse_outputs(response_data, expected_entries=entries)
 
     def build_payload(
         self,
@@ -139,26 +144,18 @@ class OpenAITranslator:
             "target_language": target_language,
             "source_file": source_file,
             "entries": [
-                {
-                    "index": index,
-                    "text": entry.text,
-                    "context": entry.context,
-                    "comment": entry.comment,
-                }
+                _serialize_translation_input(index=index, entry=entry)
                 for index, entry in enumerate(entries)
             ],
             "reference_translations": [
-                {
-                    "source_text": reference.source_text,
-                    "translated_text": reference.translated_text,
-                    "context": reference.context,
-                }
+                _serialize_reference_translation(reference)
                 for reference in (references or [])
             ],
             "instructions": [
                 "Translate each entry into the target language.",
                 "The source language may be mixed or unknown inside a single string.",
                 "Preserve placeholders, formatting tokens, code, and technical identifiers exactly.",
+                "For plural entries, return exactly the requested number of plural forms.",
                 "Use the provided reference translations only as style and terminology context.",
                 "Return JSON only with the same indexes in the same order.",
             ],
@@ -167,6 +164,10 @@ class OpenAITranslator:
                     {
                         "index": 0,
                         "text": "translated text",
+                    },
+                    {
+                        "index": 1,
+                        "plural_texts": ["form 0", "form 1"],
                     }
                 ]
             },
@@ -222,7 +223,7 @@ class OpenAITranslator:
         self,
         response_data: dict[str, Any],
         *,
-        expected_count: int,
+        expected_entries: list[TranslationInput],
     ) -> list[TranslationOutput]:
         content = self._extract_message_content(response_data)
         response_json = self._load_response_json(content)
@@ -230,7 +231,7 @@ class OpenAITranslator:
         raw_translations = response_json.get("translations")
         if not isinstance(raw_translations, list):
             raise TranslatorResponseError("Model response must contain a translations list.")
-        if len(raw_translations) != expected_count:
+        if len(raw_translations) != len(expected_entries):
             raise TranslatorResponseError(
                 "Model response count does not match the number of requested entries."
             )
@@ -243,10 +244,35 @@ class OpenAITranslator:
                 raise TranslatorResponseError(
                     "Model response indexes must match the original request order."
                 )
-            text = item.get("text")
-            if not isinstance(text, str):
-                raise TranslatorResponseError("Each translation item must contain text.")
-            outputs.append(TranslationOutput(text=text))
+            expected_entry = expected_entries[index]
+            if expected_entry.plural_text is None:
+                text = item.get("text")
+                if not isinstance(text, str):
+                    raise TranslatorResponseError(
+                        "Singular translation items must contain text."
+                    )
+                outputs.append(TranslationOutput(text=text))
+                continue
+
+            plural_texts = item.get("plural_texts")
+            if not isinstance(plural_texts, list):
+                raise TranslatorResponseError(
+                    "Plural translation items must contain plural_texts."
+                )
+            expected_plural_forms = expected_entry.expected_plural_forms
+            if expected_plural_forms is None:
+                raise TranslatorResponseError(
+                    "Plural translation inputs must define expected_plural_forms."
+                )
+            if len(plural_texts) != expected_plural_forms:
+                raise TranslatorResponseError(
+                    "Plural translation count does not match the target locale plural forms."
+                )
+            if not all(isinstance(text, str) for text in plural_texts):
+                raise TranslatorResponseError(
+                    "Plural translation items must contain only string forms."
+                )
+            outputs.append(TranslationOutput(plural_texts=list(plural_texts)))
         return outputs
 
     def _extract_message_content(self, response_data: dict[str, Any]) -> str:
@@ -299,3 +325,48 @@ class OpenAITranslator:
         if self.base_url.endswith("/chat/completions"):
             return self.base_url
         return f"{self.base_url}/chat/completions"
+
+
+def _serialize_translation_input(
+    *,
+    index: int,
+    entry: TranslationInput,
+) -> dict[str, object]:
+    if entry.plural_text is None:
+        return {
+            "index": index,
+            "kind": "singular",
+            "text": entry.text,
+            "context": entry.context,
+            "comment": entry.comment,
+        }
+
+    return {
+        "index": index,
+        "kind": "plural",
+        "singular_text": entry.text,
+        "plural_text": entry.plural_text,
+        "expected_plural_forms": entry.expected_plural_forms,
+        "context": entry.context,
+        "comment": entry.comment,
+    }
+
+
+def _serialize_reference_translation(
+    reference: ReferenceTranslation,
+) -> dict[str, object]:
+    if reference.plural_source_text is None:
+        return {
+            "kind": "singular",
+            "text": reference.source_text,
+            "translation": reference.translated_text,
+            "context": reference.context,
+        }
+
+    return {
+        "kind": "plural",
+        "singular_text": reference.source_text,
+        "plural_text": reference.plural_source_text,
+        "plural_translations": reference.translated_plural_texts or [],
+        "context": reference.context,
+    }

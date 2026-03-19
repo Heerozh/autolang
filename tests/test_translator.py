@@ -11,6 +11,7 @@ from autolang.translator import (
     OpenAITranslator,
     ReferenceTranslation,
     TranslationInput,
+    TranslationOutput,
     TranslatorResponseError,
 )
 
@@ -32,7 +33,13 @@ def test_build_messages_include_default_and_custom_system_prompts() -> None:
                 source_text="Save",
                 translated_text="保存",
                 context="button_label",
-            )
+            ),
+            ReferenceTranslation(
+                source_text="{count} file",
+                plural_source_text="{count} files",
+                translated_plural_texts=["{count} 个文件"],
+                context="status_line",
+            ),
         ],
     )
 
@@ -48,6 +55,7 @@ def test_build_messages_include_default_and_custom_system_prompts() -> None:
     assert prompt["entries"] == [
         {
             "index": 0,
+            "kind": "singular",
             "text": "Hello {name}",
             "context": None,
             "comment": None,
@@ -55,10 +63,18 @@ def test_build_messages_include_default_and_custom_system_prompts() -> None:
     ]
     assert prompt["reference_translations"] == [
         {
-            "source_text": "Save",
-            "translated_text": "保存",
+            "kind": "singular",
+            "text": "Save",
+            "translation": "保存",
             "context": "button_label",
-        }
+        },
+        {
+            "kind": "plural",
+            "singular_text": "{count} file",
+            "plural_text": "{count} files",
+            "plural_translations": ["{count} 个文件"],
+            "context": "status_line",
+        },
     ]
 
 
@@ -100,6 +116,58 @@ def test_translate_batch_parses_json_response() -> None:
     )
 
     assert [output.text for output in outputs] == ["你好 {name}", "欢迎"]
+
+
+def test_translate_batch_parses_plural_json_response() -> None:
+    translator = OpenAITranslator(
+        model="gpt-test",
+        base_url="https://example.com/v1",
+    )
+
+    translator._post_json = lambda payload: {  # type: ignore[method-assign]
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "translations": [
+                                {
+                                    "index": 0,
+                                    "plural_texts": [
+                                        "{count} файл",
+                                        "{count} файла",
+                                        "{count} файлов",
+                                    ],
+                                }
+                            ]
+                        },
+                        ensure_ascii=False,
+                    )
+                }
+            }
+        ]
+    }
+
+    outputs = translator.translate_batch(
+        target_language="ru",
+        entries=[
+            TranslationInput(
+                text="{count} file",
+                plural_text="{count} files",
+                expected_plural_forms=3,
+            )
+        ],
+    )
+
+    assert outputs == [
+        TranslationOutput(
+            plural_texts=[
+                "{count} файл",
+                "{count} файла",
+                "{count} файлов",
+            ]
+        )
+    ]
 
 
 def test_translate_batch_accepts_json_wrapped_in_extra_text() -> None:
@@ -152,4 +220,43 @@ def test_translate_batch_rejects_mismatched_indexes() -> None:
         translator.translate_batch(
             target_language="zh",
             entries=[TranslationInput(text="Hello")],
+        )
+
+
+def test_translate_batch_rejects_wrong_plural_form_count() -> None:
+    translator = OpenAITranslator(
+        model="gpt-test",
+        base_url="https://example.com/v1",
+    )
+
+    translator._post_json = lambda payload: {  # type: ignore[method-assign]
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "translations": [
+                                {
+                                    "index": 0,
+                                    "plural_texts": ["{count} file"],
+                                }
+                            ]
+                        },
+                        ensure_ascii=False,
+                    )
+                }
+            }
+        ]
+    }
+
+    with pytest.raises(TranslatorResponseError):
+        translator.translate_batch(
+            target_language="en",
+            entries=[
+                TranslationInput(
+                    text="{count} file",
+                    plural_text="{count} files",
+                    expected_plural_forms=2,
+                )
+            ],
         )
