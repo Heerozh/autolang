@@ -51,6 +51,15 @@ class TranslationOutput:
     text: str
 
 
+@dataclass(frozen=True, slots=True)
+class ReferenceTranslation:
+    """Already translated text used as context for the current batch."""
+
+    source_text: str
+    translated_text: str
+    context: str | None = None
+
+
 class OpenAITranslator:
     """Thin OpenAI-compatible client for batched translation requests."""
 
@@ -77,6 +86,7 @@ class OpenAITranslator:
         target_language: str,
         entries: list[TranslationInput],
         source_file: str | None = None,
+        references: list[ReferenceTranslation] | None = None,
     ) -> list[TranslationOutput]:
         """Translate a batch of strings into the target language."""
         if not entries:
@@ -86,6 +96,7 @@ class OpenAITranslator:
             target_language=target_language,
             entries=entries,
             source_file=source_file,
+            references=references,
         )
         response_data = self._post_json(payload)
         return self._parse_outputs(response_data, expected_count=len(entries))
@@ -96,6 +107,7 @@ class OpenAITranslator:
         target_language: str,
         entries: list[TranslationInput],
         source_file: str | None = None,
+        references: list[ReferenceTranslation] | None = None,
     ) -> dict[str, object]:
         """Build the chat completions payload for a translation batch."""
         return {
@@ -105,6 +117,7 @@ class OpenAITranslator:
                 target_language=target_language,
                 entries=entries,
                 source_file=source_file,
+                references=references,
             ),
         }
 
@@ -114,6 +127,7 @@ class OpenAITranslator:
         target_language: str,
         entries: list[TranslationInput],
         source_file: str | None = None,
+        references: list[ReferenceTranslation] | None = None,
     ) -> list[dict[str, str]]:
         """Build chat messages for the current translation batch."""
         messages = [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}]
@@ -133,10 +147,19 @@ class OpenAITranslator:
                 }
                 for index, entry in enumerate(entries)
             ],
+            "reference_translations": [
+                {
+                    "source_text": reference.source_text,
+                    "translated_text": reference.translated_text,
+                    "context": reference.context,
+                }
+                for reference in (references or [])
+            ],
             "instructions": [
                 "Translate each entry into the target language.",
                 "The source language may be mixed or unknown inside a single string.",
                 "Preserve placeholders, formatting tokens, code, and technical identifiers exactly.",
+                "Use the provided reference translations only as style and terminology context.",
                 "Return JSON only with the same indexes in the same order.",
             ],
             "response_schema": {

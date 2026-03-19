@@ -9,6 +9,7 @@ import pytest
 from autolang.translator import (
     DEFAULT_SYSTEM_PROMPT,
     OpenAITranslator,
+    ReferenceTranslation,
     TranslationInput,
     TranslatorResponseError,
 )
@@ -26,6 +27,13 @@ def test_build_messages_include_default_and_custom_system_prompts() -> None:
         target_language="zh",
         source_file="app.py",
         entries=[TranslationInput(text="Hello {name}")],
+        references=[
+            ReferenceTranslation(
+                source_text="Save",
+                translated_text="保存",
+                context="button_label",
+            )
+        ],
     )
 
     assert messages[0] == {"role": "system", "content": DEFAULT_SYSTEM_PROMPT}
@@ -43,6 +51,13 @@ def test_build_messages_include_default_and_custom_system_prompts() -> None:
             "text": "Hello {name}",
             "context": None,
             "comment": None,
+        }
+    ]
+    assert prompt["reference_translations"] == [
+        {
+            "source_text": "Save",
+            "translated_text": "保存",
+            "context": "button_label",
         }
     ]
 

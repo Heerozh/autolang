@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Sequence
 
@@ -52,6 +53,8 @@ def _register_command(
         _configure_init_parser(command_parser)
     elif name == "sync":
         _configure_sync_parser(command_parser)
+    elif name == "translate":
+        _configure_translate_parser(command_parser)
     command_parser.set_defaults(handler=handler)
 
 
@@ -104,6 +107,54 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
         action="append",
         required=True,
         help="Source path to scan for gettext messages. Repeat for multiple paths.",
+    )
+
+
+def _configure_translate_parser(command_parser: ArgumentParser) -> None:
+    command_parser.add_argument(
+        "-d",
+        "--directory",
+        default="locales",
+        help="Directory used to store POT and PO files.",
+    )
+    command_parser.add_argument(
+        "-D",
+        "--domain",
+        default="messages",
+        help="Catalog domain name.",
+    )
+    command_parser.add_argument(
+        "--source",
+        dest="sources",
+        action="append",
+        required=True,
+        help="Source path hint used to scope translation batches by file.",
+    )
+    command_parser.add_argument(
+        "--model",
+        default=os.environ.get("AUTOLANG_MODEL") or os.environ.get("OPENAI_MODEL"),
+        help="Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL.",
+    )
+    command_parser.add_argument(
+        "--base-url",
+        dest="base_url",
+        default=(
+            os.environ.get("AUTOLANG_BASE_URL")
+            or os.environ.get("OPENAI_BASE_URL")
+        ),
+        help="OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or OPENAI_BASE_URL.",
+    )
+    command_parser.add_argument(
+        "--api-key",
+        dest="api_key",
+        default=os.environ.get("AUTOLANG_API_KEY") or os.environ.get("OPENAI_API_KEY"),
+        help="API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY.",
+    )
+    command_parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=50,
+        help="Maximum untranslated entries to send in one model request.",
     )
 
 
