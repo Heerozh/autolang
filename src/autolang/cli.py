@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Sequence
+from gettext import gettext as _
 
 from autolang.commands.init import run as run_init
 from autolang.commands.sync import run as run_sync
@@ -16,26 +17,28 @@ CommandHandler = Callable[[Namespace], int]
 def build_parser() -> ArgumentParser:
     parser = ArgumentParser(
         prog="autolang",
-        description="CLI utilities for gettext/Babel/OpenAI-compatible translation flows.",
+        description=_(
+            "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
+        ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     _register_command(
         subparsers,
         name="init",
-        help_text="Initialize project configuration and translation assets.",
+        help_text=_("Initialize project configuration and translation assets."),
         handler=run_init,
     )
     _register_command(
         subparsers,
         name="sync",
-        help_text="Sync gettext/Babel catalog files.",
+        help_text=_("Sync gettext/Babel catalog files."),
         handler=run_sync,
     )
     _register_command(
         subparsers,
         name="translate",
-        help_text="Translate pending catalog entries through a compatible API.",
+        help_text=_("Translate pending catalog entries through a compatible API."),
         handler=run_translate,
     )
     return parser
@@ -63,7 +66,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         "-d",
         "--directory",
         default="locales",
-        help="Directory used to store POT and PO files.",
+        help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "-l",
@@ -71,14 +74,14 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         dest="locales",
         action="append",
         required=True,
-        help="Target locale to initialize. Repeat for multiple locales.",
+        help=_("Target locale to initialize. Repeat for multiple locales."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
         required=True,
-        help="Source path to scan for gettext messages. Repeat for multiple paths.",
+        help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
 
@@ -87,14 +90,14 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
         "-d",
         "--directory",
         default="locales",
-        help="Directory used to store POT and PO files.",
+        help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
         required=True,
-        help="Source path to scan for gettext messages. Repeat for multiple paths.",
+        help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
 
 
@@ -103,19 +106,19 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         "-d",
         "--directory",
         default="locales",
-        help="Directory used to store POT and PO files.",
+        help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
         required=True,
-        help="Source path hint used to scope translation batches by file.",
+        help=_("Source path hint used to scope translation batches by file."),
     )
     command_parser.add_argument(
         "--model",
         default=os.environ.get("AUTOLANG_MODEL") or os.environ.get("OPENAI_MODEL"),
-        help="Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL.",
+        help=_("Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."),
     )
     command_parser.add_argument(
         "--base-url",
@@ -124,19 +127,21 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
             os.environ.get("AUTOLANG_BASE_URL")
             or os.environ.get("OPENAI_BASE_URL")
         ),
-        help="OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or OPENAI_BASE_URL.",
+        help=_(
+            "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or OPENAI_BASE_URL."
+        ),
     )
     command_parser.add_argument(
         "--api-key",
         dest="api_key",
         default=os.environ.get("AUTOLANG_API_KEY") or os.environ.get("OPENAI_API_KEY"),
-        help="API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY.",
+        help=_("API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."),
     )
     command_parser.add_argument(
         "--batch-size",
         type=int,
         default=50,
-        help="Maximum untranslated entries to send in one model request.",
+        help=_("Maximum untranslated entries to send in one model request."),
     )
 
 
