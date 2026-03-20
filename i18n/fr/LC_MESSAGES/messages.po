@@ -7,15 +7,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 07:41+0000\n"
+"POT-Creation-Date: 2026-03-20 20:04+0800\n"
 "PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: fr\n"
 "Language-Team: fr <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
@@ -27,7 +27,8 @@ msgstr ""
 
 #: src/autolang/cli.py:31
 msgid "Initialize project configuration and translation assets."
-msgstr "Initialiser la configuration du projet et les ressources de traduction."
+msgstr ""
+"Initialiser la configuration du projet et les ressources de traduction."
 
 #: src/autolang/cli.py:37
 msgid "Sync gettext/Babel catalog files."
@@ -48,14 +49,14 @@ msgstr "Locale cible à initialiser. Répéter pour plusieurs locales."
 #: src/autolang/cli.py:88 src/autolang/cli.py:106
 msgid "Source path to scan for gettext messages. Repeat for multiple paths."
 msgstr ""
-"Chemin source à analyser pour les messages gettext. Répéter pour "
-"plusieurs chemins."
+"Chemin source à analyser pour les messages gettext. Répéter pour plusieurs "
+"chemins."
 
 #: src/autolang/cli.py:124
 msgid "Source path hint used to scope translation batches by file."
 msgstr ""
-"Indication de chemin source utilisée pour délimiter les lots de "
-"traduction par fichier."
+"Indication de chemin source utilisée pour délimiter les lots de traduction "
+"par fichier."
 
 #: src/autolang/cli.py:130
 msgid "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
@@ -66,8 +67,8 @@ msgid ""
 "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
 "OPENAI_BASE_URL."
 msgstr ""
-"URL de base de l'API compatible OpenAI. Par défaut : AUTOLANG_BASE_URL ou"
-" OPENAI_BASE_URL."
+"URL de base de l'API compatible OpenAI. Par défaut : AUTOLANG_BASE_URL ou "
+"OPENAI_BASE_URL."
 
 #: src/autolang/cli.py:148
 msgid "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
@@ -76,8 +77,7 @@ msgstr "Clé API. Par défaut : AUTOLANG_API_KEY ou OPENAI_API_KEY."
 #: src/autolang/cli.py:154
 msgid "Maximum untranslated entries to send in one model request."
 msgstr ""
-"Nombre maximum d'entrées non traduites à envoyer dans une requête de "
-"modèle."
+"Nombre maximum d'entrées non traduites à envoyer dans une requête de modèle."
 
 #: src/autolang/translator.py:211
 #, python-brace-format
@@ -127,19 +127,21 @@ msgstr "Les éléments de traduction pluriels doivent contenir plural_texts."
 
 #: src/autolang/translator.py:282
 msgid "Plural translation inputs must define expected_plural_forms."
-msgstr "Les entrées de traduction plurielle doivent définir expected_plural_forms."
+msgstr ""
+"Les entrées de traduction plurielle doivent définir expected_plural_forms."
 
 #: src/autolang/translator.py:287
-msgid "Plural translation count does not match the target locale plural forms."
+msgid ""
+"Plural translation count does not match the target locale plural forms."
 msgstr ""
-"Le nombre de traductions pluriel ne correspond pas aux formes plurielles "
-"de la locale cible."
+"Le nombre de traductions pluriel ne correspond pas aux formes plurielles de "
+"la locale cible."
 
 #: src/autolang/translator.py:292
 msgid "Plural translation items must contain only string forms."
 msgstr ""
-"Les éléments de traduction pluriels ne doivent contenir que des formes de"
-" chaîne."
+"Les éléments de traduction pluriels ne doivent contenir que des formes de "
+"chaîne."
 
 #: src/autolang/translator.py:301
 msgid "Translation API response is missing choices."
@@ -170,7 +172,8 @@ msgid "Model response JSON must be an object."
 msgstr "Le JSON de la réponse du modèle doit être un objet."
 
 #: src/autolang/commands/translate.py:24
-msgid "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+msgid ""
+"Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
 msgstr ""
 "Configuration du modèle manquante. Définissez --model ou "
 "AUTOLANG_MODEL/OPENAI_MODEL."
@@ -189,7 +192,7 @@ msgstr "--batch-size doit être supérieur à 0."
 
 #: src/autolang/commands/translate.py:86
 msgid "entry"
-msgstr ""
+msgstr "entrée"
 
 #: src/autolang/commands/translate.py:103
 msgid "Singular translation response is missing text."
@@ -204,4 +207,3 @@ msgid "Plural translation count does not match target plural slots."
 msgstr ""
 "Le nombre de traductions plurielles ne correspond pas aux emplacements "
 "pluriels cibles."
-

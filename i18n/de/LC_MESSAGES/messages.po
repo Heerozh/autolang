@@ -7,21 +7,22 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 07:41+0000\n"
+"POT-Creation-Date: 2026-03-20 20:04+0800\n"
 "PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: de\n"
 "Language-Team: de <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
 #: src/autolang/cli.py:23
 msgid "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
-msgstr "CLI-Utilities für Gettext/Babel/OpenAI-kompatible Übersetzungsabläufe."
+msgstr ""
+"CLI-Utilities für Gettext/Babel/OpenAI-kompatible Übersetzungsabläufe."
 
 #: src/autolang/cli.py:31
 msgid "Initialize project configuration and translation assets."
@@ -98,8 +99,8 @@ msgstr "Die Modellantwort muss eine Übersetzungsliste enthalten."
 #: src/autolang/translator.py:250
 msgid "Model response count does not match the number of requested entries."
 msgstr ""
-"Die Anzahl der Modellantworten stimmt nicht mit der Anzahl der "
-"angeforderten Einträge überein."
+"Die Anzahl der Modellantworten stimmt nicht mit der Anzahl der angeforderten"
+" Einträge überein."
 
 #: src/autolang/translator.py:258
 msgid "Each translation item must be an object."
@@ -124,14 +125,16 @@ msgid "Plural translation inputs must define expected_plural_forms."
 msgstr "Plurale Übersetzungsanfragen müssen expected_plural_forms definieren."
 
 #: src/autolang/translator.py:287
-msgid "Plural translation count does not match the target locale plural forms."
+msgid ""
+"Plural translation count does not match the target locale plural forms."
 msgstr ""
 "Die Anzahl der Pluralübersetzungen stimmt nicht mit den Pluralformen der "
 "Zielsprache überein."
 
 #: src/autolang/translator.py:292
 msgid "Plural translation items must contain only string forms."
-msgstr "Plurale Übersetzungseinträge dürfen nur Zeichenketten-Formen enthalten."
+msgstr ""
+"Plurale Übersetzungseinträge dürfen nur Zeichenketten-Formen enthalten."
 
 #: src/autolang/translator.py:301
 msgid "Translation API response is missing choices."
@@ -162,7 +165,8 @@ msgid "Model response JSON must be an object."
 msgstr "Das JSON der Modellantwort muss ein Objekt sein."
 
 #: src/autolang/commands/translate.py:24
-msgid "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+msgid ""
+"Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
 msgstr ""
 "Fehlende Modellkonfiguration. Setzen Sie --model oder "
 "AUTOLANG_MODEL/OPENAI_MODEL."
@@ -181,7 +185,7 @@ msgstr "--batch-size muss größer als 0 sein."
 
 #: src/autolang/commands/translate.py:86
 msgid "entry"
-msgstr ""
+msgstr "Eintrag"
 
 #: src/autolang/commands/translate.py:103
 msgid "Singular translation response is missing text."
@@ -193,5 +197,5 @@ msgstr "Plurale Übersetzungsantwort enthält keine plural_texts."
 
 #: src/autolang/commands/translate.py:283
 msgid "Plural translation count does not match target plural slots."
-msgstr "Plurale Übersetzungsanzahl stimmt nicht mit den Zielplural-Slots überein."
-
+msgstr ""
+"Plurale Übersetzungsanzahl stimmt nicht mit den Zielplural-Slots überein."

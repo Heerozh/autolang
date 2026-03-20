@@ -7,15 +7,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 07:41+0000\n"
+"POT-Creation-Date: 2026-03-20 20:04+0800\n"
 "PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: zh_Hant\n"
 "Language-Team: zh_Hant <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: zh_Hant\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
@@ -116,7 +116,8 @@ msgid "Plural translation inputs must define expected_plural_forms."
 msgstr "複數翻譯輸入必須定義 expected_plural_forms。"
 
 #: src/autolang/translator.py:287
-msgid "Plural translation count does not match the target locale plural forms."
+msgid ""
+"Plural translation count does not match the target locale plural forms."
 msgstr "複數翻譯的數量與目標語言區域的複數形式不符。"
 
 #: src/autolang/translator.py:292
@@ -152,7 +153,8 @@ msgid "Model response JSON must be an object."
 msgstr "模型回應的 JSON 必須是一個物件。"
 
 #: src/autolang/commands/translate.py:24
-msgid "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+msgid ""
+"Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
 msgstr "缺少模型配置。請設定 --model 或 AUTOLANG_MODEL/OPENAI_MODEL。"
 
 #: src/autolang/commands/translate.py:28
@@ -167,7 +169,7 @@ msgstr "--batch-size 必須大於 0。"
 
 #: src/autolang/commands/translate.py:86
 msgid "entry"
-msgstr ""
+msgstr "條目"
 
 #: src/autolang/commands/translate.py:103
 msgid "Singular translation response is missing text."
@@ -180,4 +182,3 @@ msgstr "複數翻譯回應缺少 plural_texts。"
 #: src/autolang/commands/translate.py:283
 msgid "Plural translation count does not match target plural slots."
 msgstr "複數翻譯數量與目標複數槽位不符。"
-

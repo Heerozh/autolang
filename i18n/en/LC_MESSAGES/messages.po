@@ -7,15 +7,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 07:41+0000\n"
+"POT-Creation-Date: 2026-03-20 20:04+0800\n"
 "PO-Revision-Date: 2026-03-19 21:04+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: en\n"
 "Language-Team: en <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
@@ -118,8 +118,10 @@ msgid "Plural translation inputs must define expected_plural_forms."
 msgstr "Plural translation inputs must define expected_plural_forms."
 
 #: src/autolang/translator.py:287
-msgid "Plural translation count does not match the target locale plural forms."
-msgstr "Plural translation count does not match the target locale plural forms."
+msgid ""
+"Plural translation count does not match the target locale plural forms."
+msgstr ""
+"Plural translation count does not match the target locale plural forms."
 
 #: src/autolang/translator.py:292
 msgid "Plural translation items must contain only string forms."
@@ -155,8 +157,10 @@ msgstr "Model response JSON must be an object."
 
 #: src/autolang/commands/translate.py:24
 #, fuzzy
-msgid "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
-msgstr "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+msgid ""
+"Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+msgstr ""
+"Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
 
 #: src/autolang/commands/translate.py:28
 #, fuzzy
@@ -173,7 +177,7 @@ msgstr "--batch-size must be greater than 0."
 
 #: src/autolang/commands/translate.py:86
 msgid "entry"
-msgstr ""
+msgstr "entry"
 
 #: src/autolang/commands/translate.py:103
 msgid "Singular translation response is missing text."
@@ -186,4 +190,3 @@ msgstr "Plural translation response is missing plural_texts."
 #: src/autolang/commands/translate.py:283
 msgid "Plural translation count does not match target plural slots."
 msgstr "Plural translation count does not match target plural slots."
-
