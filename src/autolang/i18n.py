@@ -1,8 +1,11 @@
 import gettext
 import locale
 import sys
+from importlib.resources import files
 
 from autolang.config import get_domain
+
+DEFAULT_I18N_DIR = str(files("autolang").joinpath("i18n"))
 
 
 def get_system_language() -> str:
@@ -21,7 +24,7 @@ def get_system_language() -> str:
     return "en"
 
 
-def get_translator(language=None, directory: str = "i18n"):
+def get_translator(language=None, directory: str = DEFAULT_I18N_DIR):
     if language:
         return gettext.translation(
             get_domain(),

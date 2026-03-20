@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import os
+import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Sequence
 
 from autolang.commands.init import run as run_init
+from autolang.project_layout import (
+    ProjectLayoutError,
+    ensure_project_root,
+    resolve_project_layout,
+)
 from autolang.commands.sync import run as run_sync
 from autolang.commands.translate import run as run_translate
 
@@ -67,8 +73,8 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
     command_parser.add_argument(
         "-d",
         "--directory",
-        default="i18n",
-        metavar="i18n",
+        default=None,
+        metavar="./src/proj/i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
@@ -83,7 +89,7 @@ def _configure_init_parser(command_parser: ArgumentParser) -> None:
         "--source",
         dest="sources",
         action="append",
-        default=["./src"],
+        default=None,
         metavar="./src",
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
@@ -93,15 +99,15 @@ def _configure_sync_parser(command_parser: ArgumentParser) -> None:
     command_parser.add_argument(
         "-d",
         "--directory",
-        default="i18n",
-        metavar="i18n",
+        default=None,
+        metavar="./src/proj/i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
-        default=["./src"],
+        default=None,
         metavar="./src",
         help=_("Source path to scan for gettext messages. Repeat for multiple paths."),
     )
@@ -111,15 +117,15 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
     command_parser.add_argument(
         "-d",
         "--directory",
-        default="i18n",
-        metavar="i18n",
+        default=None,
+        metavar="./src/proj/i18n",
         help=_("Directory used to store POT and PO files."),
     )
     command_parser.add_argument(
         "--source",
         dest="sources",
         action="append",
-        default=["./src"],
+        default=None,
         metavar="./src",
         help=_("Source path hint used to scope translation batches by file."),
     )
@@ -156,7 +162,35 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    raw_argv = list(argv) if argv is not None else sys.argv[1:]
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    args = parser.parse_args(raw_argv or None)
+    _apply_project_defaults(parser, args)
     handler: CommandHandler = args.handler
     return handler(args)
+
+
+def _apply_project_defaults(
+    parser: ArgumentParser,
+    args: Namespace,
+) -> None:
+    if args.command not in {"init", "sync", "translate"}:
+        return
+
+    try:
+        ensure_project_root()
+        layout = (
+            resolve_project_layout()
+            if args.directory is None or args.sources is None
+            else None
+        )
+    except ProjectLayoutError as exc:
+        parser.error(str(exc))
+
+    if args.directory is None:
+        assert layout is not None
+        args.directory = str(layout.catalog_directory)
+
+    if args.sources is None:
+        assert layout is not None
+        args.sources = layout.source_directories

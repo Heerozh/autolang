@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 20:04+0800\n"
+"POT-Creation-Date: 2026-03-20 20:53+0800\n"
 "PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: ru <LL@li.org>\n"
@@ -19,47 +19,47 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
-#: src/autolang/cli.py:23
+#: src/autolang/cli.py:29
 msgid "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
 msgstr "Утилиты CLI для потоков перевода, совместимых с gettext/Babel/OpenAI."
 
-#: src/autolang/cli.py:31
+#: src/autolang/cli.py:37
 msgid "Initialize project configuration and translation assets."
 msgstr "Инициализировать конфигурацию проекта и ресурсы перевода."
 
-#: src/autolang/cli.py:37
+#: src/autolang/cli.py:43
 msgid "Sync gettext/Babel catalog files."
 msgstr "Синхронизировать файлы каталогов gettext/Babel."
 
-#: src/autolang/cli.py:43
+#: src/autolang/cli.py:49
 msgid "Translate pending catalog entries through a compatible API."
 msgstr "Перевести ожидающие записи каталога через совместимый API."
 
-#: src/autolang/cli.py:72 src/autolang/cli.py:98 src/autolang/cli.py:116
+#: src/autolang/cli.py:78 src/autolang/cli.py:104 src/autolang/cli.py:122
 msgid "Directory used to store POT and PO files."
 msgstr "Каталог для хранения файлов POT и PO."
 
-#: src/autolang/cli.py:80
+#: src/autolang/cli.py:86
 msgid "Target locale to initialize. Repeat for multiple locales."
 msgstr "Целевая локаль для инициализации. Повторите для нескольких локалей."
 
-#: src/autolang/cli.py:88 src/autolang/cli.py:106
+#: src/autolang/cli.py:94 src/autolang/cli.py:112
 msgid "Source path to scan for gettext messages. Repeat for multiple paths."
 msgstr ""
 "Исходный путь для сканирования сообщений gettext. Повторите для нескольких "
 "путей."
 
-#: src/autolang/cli.py:124
+#: src/autolang/cli.py:130
 msgid "Source path hint used to scope translation batches by file."
 msgstr ""
 "Подсказка исходного пути, используемая для ограничения пакетов перевода по "
 "файлу."
 
-#: src/autolang/cli.py:130
+#: src/autolang/cli.py:136
 msgid "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
 msgstr "Название модели. По умолчанию: AUTOLANG_MODEL или OPENAI_MODEL."
 
-#: src/autolang/cli.py:140
+#: src/autolang/cli.py:146
 msgid ""
 "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
 "OPENAI_BASE_URL."
@@ -67,15 +67,26 @@ msgstr ""
 "Базовый URL API, совместимый с OpenAI. По умолчанию: AUTOLANG_BASE_URL или "
 "OPENAI_BASE_URL."
 
-#: src/autolang/cli.py:148
+#: src/autolang/cli.py:154
 msgid "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
 msgstr "Ключ API. По умолчанию: AUTOLANG_API_KEY или OPENAI_API_KEY."
 
-#: src/autolang/cli.py:154
+#: src/autolang/cli.py:160
 msgid "Maximum untranslated entries to send in one model request."
 msgstr ""
 "Максимальное количество непереведённых записей для отправки в одном запросе "
 "к модели."
+
+#: src/autolang/project_layout.py:14
+msgid "Run autolang from the project root and ensure pyproject.toml exists."
+msgstr ""
+"Запустите autolang из корня проекта и убедитесь, что файл pyproject.toml "
+"существует."
+
+#: src/autolang/project_layout.py:17
+msgid "Could not determine the project code directory from pyproject.toml."
+msgstr ""
+"Не удалось определить директорию с кодом проекта из файла pyproject.toml."
 
 #: src/autolang/translator.py:211
 #, python-brace-format

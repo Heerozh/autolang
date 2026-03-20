@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 20:04+0800\n"
+"POT-Creation-Date: 2026-03-20 20:53+0800\n"
 "PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: ja <LL@li.org>\n"
@@ -19,55 +19,63 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
-#: src/autolang/cli.py:23
+#: src/autolang/cli.py:29
 msgid "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
 msgstr "gettext/Babel/OpenAI互換の翻訳フロー用のCLIユーティリティ。"
 
-#: src/autolang/cli.py:31
+#: src/autolang/cli.py:37
 msgid "Initialize project configuration and translation assets."
 msgstr "プロジェクト設定と翻訳アセットを初期化します。"
 
-#: src/autolang/cli.py:37
+#: src/autolang/cli.py:43
 msgid "Sync gettext/Babel catalog files."
 msgstr "gettext/Babelカタログファイルを同期します。"
 
-#: src/autolang/cli.py:43
+#: src/autolang/cli.py:49
 msgid "Translate pending catalog entries through a compatible API."
 msgstr "互換性のあるAPIを通じて保留中のカタログエントリを翻訳します。"
 
-#: src/autolang/cli.py:72 src/autolang/cli.py:98 src/autolang/cli.py:116
+#: src/autolang/cli.py:78 src/autolang/cli.py:104 src/autolang/cli.py:122
 msgid "Directory used to store POT and PO files."
 msgstr "POTおよびPOファイルを保存するディレクトリ。"
 
-#: src/autolang/cli.py:80
+#: src/autolang/cli.py:86
 msgid "Target locale to initialize. Repeat for multiple locales."
 msgstr "初期化するターゲットロケール。複数のロケールには繰り返し指定します。"
 
-#: src/autolang/cli.py:88 src/autolang/cli.py:106
+#: src/autolang/cli.py:94 src/autolang/cli.py:112
 msgid "Source path to scan for gettext messages. Repeat for multiple paths."
 msgstr "gettextメッセージをスキャンするソースパス。複数のパスには繰り返し指定します。"
 
-#: src/autolang/cli.py:124
+#: src/autolang/cli.py:130
 msgid "Source path hint used to scope translation batches by file."
 msgstr "ファイルごとに翻訳バッチをスコープするためのソースパスヒント。"
 
-#: src/autolang/cli.py:130
+#: src/autolang/cli.py:136
 msgid "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
 msgstr "モデル名。デフォルトはAUTOLANG_MODELまたはOPENAI_MODELです。"
 
-#: src/autolang/cli.py:140
+#: src/autolang/cli.py:146
 msgid ""
 "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
 "OPENAI_BASE_URL."
 msgstr "OpenAI互換APIベースURL。デフォルトはAUTOLANG_BASE_URLまたはOPENAI_BASE_URLです。"
 
-#: src/autolang/cli.py:148
+#: src/autolang/cli.py:154
 msgid "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
 msgstr "APIキー。デフォルトはAUTOLANG_API_KEYまたはOPENAI_API_KEYです。"
 
-#: src/autolang/cli.py:154
+#: src/autolang/cli.py:160
 msgid "Maximum untranslated entries to send in one model request."
 msgstr "1回のモデルリクエストで送信する未翻訳エントリの最大数。"
+
+#: src/autolang/project_layout.py:14
+msgid "Run autolang from the project root and ensure pyproject.toml exists."
+msgstr "プロジェクトのルートディレクトリからautolangを実行し、pyproject.tomlが存在することを確認してください。"
+
+#: src/autolang/project_layout.py:17
+msgid "Could not determine the project code directory from pyproject.toml."
+msgstr "pyproject.tomlからプロジェクトのコードディレクトリを特定できませんでした。"
 
 #: src/autolang/translator.py:211
 #, python-brace-format

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-20 20:04+0800\n"
+"POT-Creation-Date: 2026-03-20 20:53+0800\n"
 "PO-Revision-Date: 2026-03-20 00:30+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: zh_Hant <LL@li.org>\n"
@@ -19,55 +19,63 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #. NOTE: test comment to verify context handling in translation --- IGNORE ---
-#: src/autolang/cli.py:23
+#: src/autolang/cli.py:29
 msgid "CLI utilities for gettext/Babel/OpenAI-compatible translation flows."
 msgstr "用於 gettext/Babel/OpenAI 相容翻譯流程的 CLI 工具。"
 
-#: src/autolang/cli.py:31
+#: src/autolang/cli.py:37
 msgid "Initialize project configuration and translation assets."
 msgstr "初始化專案配置與翻譯資源。"
 
-#: src/autolang/cli.py:37
+#: src/autolang/cli.py:43
 msgid "Sync gettext/Babel catalog files."
 msgstr "同步 gettext/Babel 目錄檔案。"
 
-#: src/autolang/cli.py:43
+#: src/autolang/cli.py:49
 msgid "Translate pending catalog entries through a compatible API."
 msgstr "透過相容的 API 翻譯待處理的目錄項目。"
 
-#: src/autolang/cli.py:72 src/autolang/cli.py:98 src/autolang/cli.py:116
+#: src/autolang/cli.py:78 src/autolang/cli.py:104 src/autolang/cli.py:122
 msgid "Directory used to store POT and PO files."
 msgstr "用於儲存 POT 與 PO 檔案的目錄。"
 
-#: src/autolang/cli.py:80
+#: src/autolang/cli.py:86
 msgid "Target locale to initialize. Repeat for multiple locales."
 msgstr "要初始化的目標語言環境。可重複指定以初始化多個語言環境。"
 
-#: src/autolang/cli.py:88 src/autolang/cli.py:106
+#: src/autolang/cli.py:94 src/autolang/cli.py:112
 msgid "Source path to scan for gettext messages. Repeat for multiple paths."
 msgstr "掃描 gettext 訊息的來源路徑。可重複指定多個路徑。"
 
-#: src/autolang/cli.py:124
+#: src/autolang/cli.py:130
 msgid "Source path hint used to scope translation batches by file."
 msgstr "用於依檔案範圍限定翻譯批次的來源路徑提示。"
 
-#: src/autolang/cli.py:130
+#: src/autolang/cli.py:136
 msgid "Model name. Defaults to AUTOLANG_MODEL or OPENAI_MODEL."
 msgstr "模型名稱。預設為 AUTOLANG_MODEL 或 OPENAI_MODEL。"
 
-#: src/autolang/cli.py:140
+#: src/autolang/cli.py:146
 msgid ""
 "OpenAI-compatible API base URL. Defaults to AUTOLANG_BASE_URL or "
 "OPENAI_BASE_URL."
 msgstr "OpenAI 相容的 API 基礎 URL。預設為 AUTOLANG_BASE_URL 或 OPENAI_BASE_URL。"
 
-#: src/autolang/cli.py:148
+#: src/autolang/cli.py:154
 msgid "API key. Defaults to AUTOLANG_API_KEY or OPENAI_API_KEY."
 msgstr "API 金鑰。預設為 AUTOLANG_API_KEY 或 OPENAI_API_KEY。"
 
-#: src/autolang/cli.py:154
+#: src/autolang/cli.py:160
 msgid "Maximum untranslated entries to send in one model request."
 msgstr "單次模型請求中傳送的最大未翻譯項目數量。"
+
+#: src/autolang/project_layout.py:14
+msgid "Run autolang from the project root and ensure pyproject.toml exists."
+msgstr "請從專案根目錄執行 autolang，並確保 pyproject.toml 檔案存在。"
+
+#: src/autolang/project_layout.py:17
+msgid "Could not determine the project code directory from pyproject.toml."
+msgstr "無法從 pyproject.toml 確定專案程式碼目錄。"
 
 #: src/autolang/translator.py:211
 #, python-brace-format

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from autolang.cli import main
 
 
@@ -86,6 +88,56 @@ def test_init_extracts_tagged_translator_comments(sample_project: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "#. NOTE: Keep this label short for the navbar." in po_text
     assert 'msgid "welcome"' in po_text
+
+
+def test_init_defaults_to_detected_src_package_directory(project_layout_factory) -> None:
+    project_root, code_dir = project_layout_factory(package_name="demo_app", layout="src")
+    write_source(
+        code_dir / "app.py",
+        [
+            "hello",
+            "goodbye",
+        ],
+    )
+
+    exit_code = main(["init", "-l", "en", "-l", "zh"])
+
+    assert exit_code == 0
+    assert (project_root / "src" / "demo_app" / "i18n" / "messages.pot").exists()
+    assert (
+        project_root / "src" / "demo_app" / "i18n" / "en" / "LC_MESSAGES" / "messages.po"
+    ).exists()
+    assert (
+        project_root / "src" / "demo_app" / "i18n" / "zh" / "LC_MESSAGES" / "messages.po"
+    ).exists()
+
+
+def test_init_defaults_to_detected_flat_package_directory(project_layout_factory) -> None:
+    project_root, code_dir = project_layout_factory(package_name="demo_app", layout="flat")
+    write_source(code_dir / "app.py", ["hello"])
+
+    exit_code = main(["init", "-l", "zh"])
+
+    assert exit_code == 0
+    assert (project_root / "demo_app" / "i18n" / "messages.pot").exists()
+    assert (
+        project_root / "demo_app" / "i18n" / "zh" / "LC_MESSAGES" / "messages.po"
+    ).exists()
+
+
+def test_init_requires_pyproject_toml_in_project_root(
+    sample_project: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (sample_project / "pyproject.toml").unlink()
+    write_source(sample_project / "src" / "app.py", ["hello"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["init", "-l", "zh"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert "Run autolang from the project root and ensure pyproject.toml exists." in captured.err
 
 
 def write_source(path: Path, messages: list[str]) -> None:

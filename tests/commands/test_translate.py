@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import polib
+import pytest
 
 from autolang.cli import main
 from autolang.translator import TranslationOutput
@@ -340,6 +341,100 @@ def test_translate_backfills_plural_entries(
     assert entry is not None
     assert entry.msgid_plural == "{count} files"
     assert entry.msgstr_plural == {0: "{count} 个文件"}
+
+
+def test_translate_defaults_to_detected_package_directory(
+    project_layout_factory,
+    monkeypatch,
+) -> None:
+    project_root, code_dir = project_layout_factory(package_name="demo_app", layout="src")
+    write_source(code_dir / "app.py", ["hello", "welcome"])
+    write_source(code_dir / "admin.py", ["save"])
+    assert main(["init", "-l", "en", "-l", "zh"]) == 0
+
+    catalog_root = project_root / "src" / "demo_app" / "i18n"
+    (catalog_root / "PROMPT.md").write_text(
+        "Do not translate Autolang.\nPrefer concise UI text.\n",
+        encoding="utf-8",
+    )
+    set_translation(catalog_root / "en" / "LC_MESSAGES" / "messages.po", "hello", "Hello")
+    set_translation(catalog_root / "zh" / "LC_MESSAGES" / "messages.po", "hello", "你好")
+
+    captured_calls: list[dict[str, object]] = []
+
+    class FakeTranslator:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def translate_batch(
+            self,
+            *,
+            target_language: str,
+            entries,
+            source_file: str | None = None,
+            references=None,
+        ) -> list[TranslationOutput]:
+            captured_calls.append(
+                {
+                    "target_language": target_language,
+                    "source_file": source_file,
+                }
+            )
+            return [
+                TranslationOutput(text=f"{target_language}:{entry.text}")
+                for entry in entries
+            ]
+
+    monkeypatch.setattr("autolang.commands.translate.OpenAITranslator", FakeTranslator)
+
+    exit_code = main(
+        [
+            "translate",
+            "--model",
+            "gpt-test",
+            "--base-url",
+            "https://example.com/v1",
+            "--api-key",
+            "test-key",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured_calls == [
+        {"target_language": "en", "source_file": "src/demo_app/admin.py"},
+        {"target_language": "en", "source_file": "src/demo_app/app.py"},
+        {"target_language": "zh", "source_file": "src/demo_app/admin.py"},
+        {"target_language": "zh", "source_file": "src/demo_app/app.py"},
+    ]
+    assert get_translation(catalog_root / "en" / "LC_MESSAGES" / "messages.po", "welcome") == (
+        "en:welcome"
+    )
+    assert get_translation(catalog_root / "zh" / "LC_MESSAGES" / "messages.po", "save") == "zh:save"
+
+
+def test_translate_requires_pyproject_toml_in_project_root(
+    sample_project: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (sample_project / "pyproject.toml").unlink()
+    write_source(sample_project / "src" / "app.py", ["hello"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "translate",
+                "--model",
+                "gpt-test",
+                "--base-url",
+                "https://example.com/v1",
+                "--api-key",
+                "test-key",
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert "Run autolang from the project root and ensure pyproject.toml exists." in captured.err
 
 
 def write_source(path: Path, messages: list[str]) -> None:
