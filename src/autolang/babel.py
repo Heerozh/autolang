@@ -7,6 +7,17 @@ from pathlib import Path
 
 from babel.messages.frontend import CommandLineInterface
 
+DEFAULT_COMMENT_TAGS: tuple[str, ...] = (
+    "NOTE",
+    "NOTES",
+    "TRANSLATOR",
+    "TRANSLATORS",
+    "I18N",
+    "L10N",
+    "LOCALIZATION",
+    "LOC",
+)
+
 
 def catalog_path(directory: str | Path, domain: str) -> Path:
     """Return the POT file path for the configured domain."""
@@ -38,11 +49,15 @@ def extract_catalog(
     """Extract messages from source files into the domain POT file."""
     output_dir = Path(directory)
     output_dir.mkdir(parents=True, exist_ok=True)
+    comment_args = [
+        f"--add-comments={comment_tag}" for comment_tag in DEFAULT_COMMENT_TAGS
+    ]
     return run_babel(
         [
             "extract",
             "--output-file",
             str(catalog_path(output_dir, domain)),
+            *comment_args,
             *sources,
         ]
     )

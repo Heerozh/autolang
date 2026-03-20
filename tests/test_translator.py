@@ -50,7 +50,7 @@ def test_build_messages_include_default_and_custom_system_prompts() -> None:
     }
     assert messages[2]["role"] == "user"
     prompt = json.loads(messages[2]["content"])
-    assert prompt["target_language"] == "zh"
+    assert prompt["target_language"] == "zh [中文]"
     assert prompt["source_file"] == "app.py"
     assert prompt["entries"] == [
         {

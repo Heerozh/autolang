@@ -104,6 +104,39 @@ def test_sync_removes_deleted_messages_from_all_locales(sample_project: Path) ->
     )
 
 
+def test_sync_extracts_tagged_translator_comments(sample_project: Path) -> None:
+    write_source(sample_project / "src" / "app.py", ["welcome"])
+    assert (
+        main(
+            [
+                "init",
+                "-d",
+                "locales",
+                "-l",
+                "zh",
+                "--source",
+                "./src",
+            ]
+        )
+        == 0
+    )
+
+    write_source_with_comments(
+        sample_project / "src" / "app.py",
+        [
+            ("welcome", ["NOTE: Refers to the onboarding CTA."]),
+        ],
+    )
+    exit_code = main(["sync", "-d", "locales", "--source", "./src"])
+
+    assert exit_code == 0
+    po_text = (
+        sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po"
+    ).read_text(encoding="utf-8")
+    assert "#. NOTE: Refers to the onboarding CTA." in po_text
+    assert 'msgid "welcome"' in po_text
+
+
 def write_source(path: Path, messages: list[str]) -> None:
     body = "\n".join(f'print(_("{message}"))' for message in messages)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,3 +173,21 @@ def has_message(path: Path, msgid: str) -> bool:
         catalog = read_po(fileobj)
 
     return catalog.get(msgid) is not None
+
+
+def write_source_with_comments(
+    path: Path,
+    messages: list[tuple[str, list[str]]],
+) -> None:
+    body_lines: list[str] = []
+    for message, comments in messages:
+        body_lines.extend(f"# {comment}" for comment in comments)
+        body_lines.append(f'print(_("{message}"))')
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "from gettext import gettext as _\n\n"
+        + "\n".join(body_lines)
+        + "\n",
+        encoding="utf-8",
+    )

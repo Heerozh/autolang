@@ -146,6 +146,10 @@ Synchronization behavior:
 - 源码删除文案：从所有语言的 `po` 文件删除
 - 已有翻译：保持不变
 
+Tagged translator comments placed immediately above gettext calls are also extracted into PO context during `init` and `sync`. Supported tags include `NOTE`, `NOTES`, `TRANSLATOR`, `TRANSLATORS`, `I18N`, `L10N`, `LOCALIZATION`, and `LOC`.
+
+紧贴在 gettext 调用上方的带标签翻译注释，也会在 `init` 和 `sync` 期间被提取到 PO 上下文中。当前支持的标签包括 `NOTE`、`NOTES`、`TRANSLATOR`、`TRANSLATORS`、`I18N`、`L10N`、`LOCALIZATION` 和 `LOC`。
+
 ### `translate`
 
 Scan untranslated text in `po` files, group entries by `locale + source file`, and then send them to the LLM in batches.
