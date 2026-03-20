@@ -16,6 +16,7 @@ CommandHandler = Callable[[Namespace], int]
 
 
 def build_parser() -> ArgumentParser:
+    # NOTE: test comment to verify context handling in translation --- IGNORE ---
     parser = ArgumentParser(
         prog="autolang",
         description=_(
