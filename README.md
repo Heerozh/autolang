@@ -63,7 +63,7 @@ translator = gettext.translation(
 _ = translator.gettext
 
 # Your application code / 你的应用代码
-print(_("Hello {name}"))
+print(_("Hello {name}").format(name="alice"))
 print(_("保存成功"))
 ```
 
