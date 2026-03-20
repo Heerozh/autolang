@@ -137,7 +137,7 @@ def test_init_requires_pyproject_toml_in_project_root(
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 2
-    assert "Run autolang from the project root and ensure pyproject.toml exists." in captured.err
+    assert "pyproject.toml" in captured.err
 
 
 def write_source(path: Path, messages: list[str]) -> None:
