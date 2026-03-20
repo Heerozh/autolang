@@ -102,6 +102,7 @@ def translate_catalog(
                         if output.text is None:
                             raise RuntimeError(_("Singular translation response is missing text."))
                         entry.msgstr = output.text
+                        clear_fuzzy_flag(entry)
                     else:
                         if output.plural_texts is None:
                             raise RuntimeError(
@@ -112,6 +113,7 @@ def translate_catalog(
                             plural_texts=output.plural_texts,
                             plural_indexes=plural_indexes,
                         )
+                        clear_fuzzy_flag(entry)
                 progress.update(len(batch))
                 translated_any = True
                 catalog.save(str(po_path))
@@ -283,6 +285,11 @@ def apply_plural_translation(
         raise RuntimeError(_("Plural translation count does not match target plural slots."))
     for index, text in zip(plural_indexes, plural_texts, strict=True):
         entry.msgstr_plural[index] = text
+
+
+def clear_fuzzy_flag(entry: polib.POEntry) -> None:
+    """Remove the fuzzy marker once fresh translation text has been written."""
+    entry.flags = [flag for flag in entry.flags if flag != "fuzzy"]
 
 
 def get_plural_indexes(catalog: polib.POFile) -> list[int]:

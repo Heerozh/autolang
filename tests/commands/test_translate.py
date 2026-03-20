@@ -343,6 +343,61 @@ def test_translate_backfills_plural_entries(
     assert entry.msgstr_plural == {0: "{count} 个文件"}
 
 
+def test_translate_clears_fuzzy_flag_after_successful_writeback(
+    sample_project: Path,
+    monkeypatch,
+) -> None:
+    write_source(sample_project / "src" / "app.py", ["welcome"])
+    assert main(["init", "-d", "locales", "-l", "zh", "--source", "./src"]) == 0
+
+    catalog_path = sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po"
+    catalog = polib.pofile(str(catalog_path))
+    entry = catalog.find("welcome")
+    assert entry is not None
+    entry.msgstr = "旧译文"
+    entry.flags.append("fuzzy")
+    catalog.save()
+
+    class FakeTranslator:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def translate_batch(
+            self,
+            *,
+            target_language: str,
+            entries,
+            source_file: str | None = None,
+            references=None,
+        ) -> list[TranslationOutput]:
+            return [TranslationOutput(text="新译文") for _ in entries]
+
+    monkeypatch.setattr("autolang.commands.translate.OpenAITranslator", FakeTranslator)
+
+    exit_code = main(
+        [
+            "translate",
+            "-d",
+            "locales",
+            "--source",
+            "./src",
+            "--model",
+            "gpt-test",
+            "--base-url",
+            "https://example.com/v1",
+            "--api-key",
+            "test-key",
+        ]
+    )
+
+    assert exit_code == 0
+    updated_catalog = polib.pofile(str(catalog_path))
+    updated_entry = updated_catalog.find("welcome")
+    assert updated_entry is not None
+    assert updated_entry.msgstr == "新译文"
+    assert "fuzzy" not in updated_entry.flags
+
+
 def test_translate_defaults_to_detected_package_directory(
     project_layout_factory,
     monkeypatch,
