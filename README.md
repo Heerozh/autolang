@@ -1,326 +1,293 @@
 # Autolang
 
-`Autolang` is a fully automatic and maintenance-free multilingual support for Python, It will 
-analyzes and collects context, and send to LLM for translation.
+Autolang provides fully automatic, maintenance-free multilingual support for Python projects. It analyzes and collects context, then sends it to an LLM for translation.
 
-`Autolang` 是全自动，免维护的 Python 多语言支持，它会自动分析并收集信息，并发送给大模型进行翻译。
+Autolang 为 Python 项目提供全自动、免维护的多语言支持。它会分析并收集上下文，然后发送给大模型进行翻译。
 
-You only need to wrap an f-string like `tt(f"repo stars is {var}K")`, and that is it.
+It does not restrict the source language of your text. If your project has collaborators from different countries or regions, they can write in their native languages.
 
-只需要通过 `tt(f"repo stars is {var}K")` 把f-string包装下，就这样。
-
-## Quick Start / 快速开始
-
-```python
-from datetime import datetime
-
-import babel
-import babel.support
-
-from autolang import install
-
-# locale_str=None means use system language, or an RFC3066 locale like `zh_Hans`
-# locale_str=None 表示使用系统语言，或者使用类似 `zh_Hans` 的 RFC3066 locale
-translator = install(locale_str=None)
-tt = translator.translate
-
-# global localization formatting tool
-# 贯穿全局的本地化Format工具
-fmt: babel.support.Format = translator.format
-
-name = "Alice"
-now = datetime(2026, 3, 11)
-follower = 12345
-print(tt(f"Hello {name}"))
-print(tt(f"Today is {fmt.date(now, format='short')}"))
-print(tt(f"Your have {follower / 1000}K followers"))
-
-# currency format
-# 货币格式
-balance = 864.15
-print(tt(f"Balance is {fmt.currency(balance, 'CNY')}")
-```
-
-Translation: / 翻译：
-
-```bash
-uv run tt init --locales es
-uv run tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xx
-```
-
-Execution: / 执行：
-
-```bash
-uv run readme.py
-```
-
-Example output: / 示例输出：
-
-```text
-Hola Alice
-Hoy es 11/3/26
-Tienes 12 mil seguidores
-El saldo es 864,15 CNY
-```
-
-## Features / 特性
-
-- Fully automatic and maintenance-free
-- Supports f-strings, and only f-strings. It uses AST and LSP to record f-string context
-  for translation.
-- Does not restrict the source language of your text. If your project has collaborators
-  from different countries or regions, they can write in their native languages.
-- Automatically formats locale-sensitive values such as decimal separators, units, and
-  currencies, and provides candidates for AI to handle.
-
-----
-
-- 全自动，免维护
-- 支持 f-string，且只允许 f-string。使用AST和LSP，记录f-string上下文用于翻译
-- 不限制文本语言，你的项目如果有多个国家地区的合作者，可以让他们使用自己的母语
-- 自动格式化，遇到需要本地化的格式，如小数点，单位，货币等，会提供候选让AI处理
-
-## Drawbacks / 缺陷
-
-The convenience comes with a clear tradeoff: f-strings and placeholder expressions are
-evaluated twice. The source f-string is evaluated before `tt()` is called, and the
-translated f-string is evaluated again during translation. In practice, `tt()` 
-takes twice as long as a simple f-string.
-
-This is usually acceptable for error logs and other fixed text, but it is not suitable
-for webpages or any application that needs to render text frequently.
-
-便捷使用的另一面，也有一个明显缺陷：f-string 和其中的占位表达式会被求值两次。
-源 f-string 会在调用 `tt()` 之前先执行一次，翻译后的 f-string 在翻译阶段又会再执行一次。
-实际性能就是 `tt()` 耗时2倍与单纯的 f-string。
-
-这对于错误日志和其他固定文案通常是足够的，但不适合用于网页或任何需要频繁渲染文字的应用。
+它不限制文本的源语言。如果你的项目有来自不同国家或地区的协作者，他们可以直接使用自己的母语编写内容。
 
 ## Workflow / 工作流
 
-1. First, wrap all your text with `tt()`.
-2. Run `tt init --locales en zh fr` to initialize the languages for your project.
-3. Add `tt sync` and
-   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
-   to your CI/CD pipeline.
+Its responsibility is intentionally narrow:
 
-All Done!
+它的职责刻意保持得很薄：
+
+- Extract `_()` strings from source code with `Babel` and maintain `pot/po` files, which are GNU-standard localization files.
+- Translate untranslated entries in `po` files through an OpenAI-compatible API, while using code comments and already translated text from the same file as reference context.
+- Compile the results into binary `mo` files at the end.
 
 ----
 
-1. 首先用 `tt()` 包裹你的所有文本。
-2. `tt init --locales en zh fr` 来初始化你项目的语言
-3. 在 ci/cd 流程中添加 `tt sync` &&
-   `tt translate --model=deepseek-chat --base-url=https://api.deepseek.com/v1 --api-key=sk-xxx`
+- 用 `Babel` 提取源码中的 `_()` 文本并维护 `pot/po` 文件，这些文件是 GNU 标准的多语言文件。
+- 通过 OpenAI 兼容接口翻译 `po` 文件中的未翻译条目，并把代码注释、同一文件中已经翻译的文本作为参考上下文。
+- 最后将结果编译为二进制 `mo` 文件。
+
+A typical flow looks like this:
+
+典型流程如下：
+
+1. Wrap user-facing text with `gettext` in Python code.
+2. Run `autolang init` to initialize the locale directory and `po` files.
+3. Run `autolang sync` and `autolang translate` in your CI/CD workflow to keep `po` files synchronized with source code and let the LLM fill in missing translations.
+
+----
+
+1. 在 Python 代码里用 `gettext` 包裹面向用户的文案。
+2. 执行 `autolang init` 初始化语言目录和 `po` 文件。
+3. 在 CI/CD 工作流中执行 `autolang sync` 和 `autolang translate`，让 `po` 文件与源码保持同步，并交给大模型补全缺失翻译。
+
+Example source code:
+
+示例源码：
+
+```python
+from gettext
+
+# i18n.py for setting up the translator / i18n.py，用于设置翻译器
+def get_system_language() -> str:
+    if sys.platform == "win32":
+        import ctypes
+        lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        return locale.windows_locale.get(lang_id)
+    else:
+        return locale.getlocale()
+
+translator = gettext.translation(
+            "messages",
+            localedir="i18n",
+            languages=[get_system_language(), "en"],
+            fallback=True,
+        )
+_ = translator.gettext
+
+# Your application code / 你的应用代码
+print(_("Hello {name}"))
+print(_("保存成功"))
+```
 
 ## Installation / 安装
 
+Just add it to your development dependencies:
+
+只需将它加入开发依赖：
+
 ```bash
-uv add autolang && uv add --dev 'autolang[cli]'
+uv add --dev autolang
 ```
 
+CLI entry point:
 
+CLI 入口：
 
-## Public API / 公共 API
-
-```python
-from autolang import (
-    TransparentTranslator,
-    install,
-)
+```bash
+uv run autolang --help
 ```
 
-- `install(locale_dir="locales", locale_str=None)` creates and returns a translator
-  instance.
-- `translator.translate(text)` translates the current call site.
-- `translator.reload()` reloads the instance locale file and clears its cached call-site
-  entries.
-- `translator.clear_cache()` clears the instance cache without reloading files.
+## Commands / 命令
+
+### `init`
+
+Initialize the directory structure and `po` files for the target locales. The command first runs `pybabel extract` to generate a `pot` file, then runs `pybabel init` for each locale.
+
+初始化目标语言的目录结构和 `po` 文件。命令会先调用 `pybabel extract` 生成 `pot` 文件，再对每个语言执行 `pybabel init`。
+
+```bash
+uv run autolang init -d i18n -l en -l zh --source ./src
+```
+
+Common arguments:
+
+常用参数：
+
+- `-d, --directory`: Locale directory. Default: `i18n`
+- `-l, --locale`: Target locale. Can be passed multiple times
+- `--source`: Source code path to scan. Can be passed multiple times
 
 ----
 
-- `install(locale_dir="locales", locale_str=None)` 创建并返回一个 translator 实例。
-- `translator.translate(text)` 翻译当前调用位置的文本。
-- `translator.reload()` 重新加载该实例的 locale 文件，并清空缓存的调用位置条目。
-- `translator.clear_cache()` 在不重新加载文件的情况下清空实例缓存。
+- `-d, --directory`: 语言目录，默认 `i18n`
+- `-l, --locale`: 目标语言，可重复传入
+- `--source`: 需要扫描的源码路径，可重复传入
 
-## CLI / 命令行工具
+After initialization, the directory usually looks like this:
 
-The project also ships a short developer CLI command: `tt`.
+初始化后目录通常类似：
 
-项目也提供了一个简短的开发者 CLI 命令：`tt`。
-
-For downstream projects using `uv`, install it with:
-
-对于使用 `uv` 的下游项目，可以这样安装：
-
-```bash
-uv add autolang
-uv add --dev 'autolang[cli]'
+```text
+i18n/
+  messages.pot
+  en/LC_MESSAGES/messages.po
+  zh/LC_MESSAGES/messages.po
 ```
 
-The CLI tool depends on the `basedpyright` LSP package, so it is only added to the
-development environment.
+### `sync`
 
-CLI工具依赖 `basedpyright` LSP包，所以只添加到开发者环境中去。
+Synchronize source strings into the `po` files for all locales. The command reruns `pybabel extract` and `pybabel update`.
 
-### Init / 初始化
-
-Initialize locale TOML files.
-
-初始化 locale TOML 文件。
+将源码文案同步到所有语言的 `po` 文件。命令会重新调用 `pybabel extract` 和 `pybabel update`。
 
 ```bash
-tt init \
-  --source src \
-  --locale-dir locales \
-  --locales en es
+uv run autolang sync -d i18n --source ./src
 ```
 
-By default, the command:
+Synchronization behavior:
 
-默认情况下，这个命令会：
+同步行为：
 
-- scan Python files under `--source`
-- create one TOML file for each requested locale
-- skip files that already exist
-- write all keys as `"text" = "MISSING_TRANSLATION"`
+- Newly added source strings: added to the `po` files for all locales
+- Removed source strings: deleted from the `po` files for all locales
+- Existing translations: kept unchanged
 
 ----
 
-- 扫描 `--source` 下的 Python 文件
-- 为每个请求的 locale 创建一个 TOML 文件
-- 如果文件已存在，则跳过
-- 把所有 key 写成 `"text" = "MISSING_TRANSLATION"`
+- 源码新增文案：添加到所有语言的 `po` 文件
+- 源码删除文案：从所有语言的 `po` 文件删除
+- 已有翻译：保持不变
 
-### Sync / 同步
+Tagged translator comments placed immediately above gettext calls are also extracted into PO context during `init` and `sync`. Supported tags include `NOTE`, `NOTES`, `TRANSLATOR`, `TRANSLATORS`, `I18N`, `L10N`, `LOCALIZATION`, and `LOC`.
 
-Sync collected templates across existing locale TOML files:
+紧贴在 gettext 调用上方的带标签翻译注释，也会在 `init` 和 `sync` 期间被提取到 PO 上下文中。当前支持的标签包括 `NOTE`、`NOTES`、`TRANSLATOR`、`TRANSLATORS`、`I18N`、`L10N`、`LOCALIZATION` 和 `LOC`。
 
-把收集到的模板同步到现有的 locale TOML 文件中：
+### `translate`
+
+Scan untranslated text in `po` files, group entries by `locale + source file`, and then send them to the LLM in batches.
+
+扫描 `po` 文件中的未翻译文本，按“语言 + 来源文件”分组，然后分批发送给大模型。
 
 ```bash
-tt sync \
-  --source src \
-  --locale-dir locales
+uv run autolang translate -d i18n --source ./src
 ```
 
-By default, the command:
+You can also pass model settings explicitly:
 
-默认情况下，这个命令会：
+也可以显式传入模型参数：
 
-- scan Python files under `--source`
-- extract `tt("...")` and `tt(f"...")` call sites through a Babel-compatible extractor
-- skip hidden and cache/build directories such as `.git`, `.venv`, and `__pycache__`
-- keep existing translated values for keys that are still present in source
-- check whether existing translated text is safe; it must either remain exactly as it
-  appears in the source code or be wrapped in `fmt.*()`, otherwise it is reset to
-  `MISSING_TRANSLATION`
-- write missing keys as `"source" = "MISSING_TRANSLATION"`
-- remove stale keys that are no longer collected from source
-- run static analysis and write cue files under `.locales_cue/`
-- include per-placeholder context such as the nearest assignment, parameter annotation,
-  allowed `fmt.*` candidates, and a recommended candidate when confidence is high
+```bash
+uv run autolang translate \
+  -d i18n \
+  --source ./src \
+  --model deepseek-chat \
+  --base-url https://api.deepseek.com \
+  --api-key your-api-key
+```
+
+Translation behavior:
+
+翻译行为：
+
+- Process currently untranslated singular and plural entries
+- Batch by source file to avoid mixing unrelated files in the same request
+- Send already translated text from the same locale and source file as reference context
+- Preserve technical content such as `{name}`, `%(count)s`, `%s`, code identifiers, paths, and CLI arguments
+- No source language declaration is required, because text inside `_()` may be mixed-language; the model only needs to output the target-language version
 
 ----
 
-- 扫描 `--source` 下的 Python 文件
-- 通过兼容 Babel 的提取器提取 `tt("...")` 和 `tt(f"...")` 调用位置
-- 跳过 `.git`、`.venv` 和 `__pycache__` 等隐藏目录和缓存/构建目录
-- 保留源码中仍然存在的 key 对应的现有翻译值
-- 检查现有翻译文本是否安全；它必须要么和源码中的内容完全一致，要么被包裹在 `fmt.*()`
-  中，否则就重置为 `MISSING_TRANSLATION`
-- 将缺失的 key 写成 `"source" = "MISSING_TRANSLATION"`
-- 删除那些已经无法从源码中收集到的过期 key
-- 运行静态分析，并把 cue 文件写到 `.locales_cue/` 下
-- 为每个占位符包含上下文信息，例如最近的赋值、参数注解、允许使用的 `fmt.*`
-  候选项，以及在置信度较高时给出的推荐候选项
+- 处理当前未翻译的单数和复数条目
+- 按来源文件分批，避免在同一次请求中混入无关文件
+- 将同语言、同来源文件下已翻译的文本作为参考上下文传给模型
+- 保留 `{name}`、`%(count)s`、`%s`、代码标识符、路径、CLI 参数等技术内容
+- 不要求声明源语言，因为 `_()` 里的文本可能是混合语言；模型只需要输出目标语言版本
 
-### Translate / 翻译
+Common arguments:
 
-Translate all locale TOML files by filling entries still marked as `MISSING_TRANSLATION`
-through an OpenAI-compatible API:
+常用参数：
 
-通过兼容 OpenAI 的 API，为所有 locale TOML 文件中仍然标记为 `MISSING_TRANSLATION`
-的条目补全翻译：
-
-```bash
-tt translate \
-  --locale-dir locales \
-  --model gpt-4.1-mini \
-  --api-key "$OPENAI_API_KEY"
-```
-
-By default, the command:
-
-默认情况下，这个命令会：
-
-- discover every `*.toml` file under the locale directory as a translation target
-- use each TOML key as the source template text
-- read cue text from `.<locale-dir>_cue/*.toml` when available
-- read optional project instructions from `TT_PROMPT.md` if found under the locale
-  directory, source directory, or current working directory, and append them to the
-  system prompt
-- only translate locale entries whose current value is `MISSING_TRANSLATION`
-- send one source key per model request
-- validate the returned JSON and placeholders before writing files when they are safe
+- `-d, --directory`: Locale directory. Default: `locales`
+- `--source`: Source-path hints. Can be passed multiple times
+- `--model`: Model name
+- `--base-url`: OpenAI-compatible API base URL
+- `--api-key`: API key
+- `--batch-size`: Maximum number of untranslated strings per request. Default: `50`
 
 ----
 
-- 把 locale 目录下的每个 `*.toml` 文件都作为翻译目标
-- 使用每个 TOML key 作为源模板文本
-- 在可用时从 `.<locale-dir>_cue/*.toml` 读取 cue 文本
-- 如果在 locale 目录、源码目录或当前工作目录下找到 `TT_PROMPT.md`，就读取其中可选的项目说明并追加到
-  system prompt 中
-- 只翻译当前值为 `MISSING_TRANSLATION` 的 locale 条目
-- 每次模型请求只发送一个源 key
-- 在安全的前提下校验返回的 JSON 和占位符后再写入文件
+- `-d, --directory`: 语言目录，默认 `locales`
+- `--source`: 来源路径提示，可重复传入
+- `--model`: 模型名
+- `--base-url`: OpenAI 兼容接口地址
+- `--api-key`: 接口密钥
+- `--batch-size`: 单次请求最多发送多少条未翻译文本，默认 `50`
 
-The CLI also reads these environment variables:
+## Model Configuration / 模型配置
 
-CLI 也会读取这些环境变量：
+`translate` supports both command-line arguments and environment variables.
 
-- `TT_API_KEY` or `OPENAI_API_KEY`
-- `TT_BASE_URL` or `OPENAI_BASE_URL`
-- `TT_MODEL` or `OPENAI_MODEL`
+`translate` 同时支持命令行参数和环境变量。
 
-## How It Works / 工作原理
+Command-line arguments take priority. If they are not provided, Autolang falls back to the following environment variables:
 
-At a high level:
-
-大致流程如下：
-
-1. You call `tt(f"...")`.
-   Here `tt = translator.translate`.
-2. The library via reflection rebuilds the source template as key, for example
-   `Hello {name}`.
-3. It loads the translated template from TOML by key.
-4. Compiles the translated template and caches it.
-5. Later calls from the same bytecode location reuse the cached compiled expression.
-
-----
-
-1. 你调用 `tt(f"...")`。
-   这里的 `tt = translator.translate`。
-2. 库会通过反射，从字节码位置重建源模板作为语言key，例如 `Hello {name}`。
-3. 然后从 TOML 中找出对应的翻译后的模板。
-4. 编译翻译后的模板并缓存。
-5. 之后来自同一字节码位置的调用会复用这个已缓存的编译表达式。
-
-## Development / 开发
-
-Run tests:
-
-运行测试：
+命令行参数优先；如果未传入，则会回退到以下环境变量：
 
 ```bash
-uv run pytest -q
+export AUTOLANG_MODEL=gpt-4.1-mini
+export AUTOLANG_BASE_URL=https://your-openai-compatible-endpoint/v1
+export AUTOLANG_API_KEY=your-api-key
 ```
 
-Lint:
+The following variable names are also supported:
 
-代码检查：
+也兼容以下变量名：
 
 ```bash
-uv run ruff check
+export OPENAI_MODEL=gpt-4.1-mini
+export OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+export OPENAI_API_KEY=your-api-key
+```
+
+## Domain Configuration / Domain 配置
+
+The project hides the gettext domain from end users, so `-D/--domain` is no longer exposed through the CLI.
+
+项目对用户侧隐藏了 gettext domain，因此不再通过 CLI 暴露 `-D/--domain`。
+
+Internally, it always reads from the `DEFAULT_DOMAIN` environment variable. If it is not set, `messages` is used by default.
+
+内部统一从 `DEFAULT_DOMAIN` 环境变量读取；如果未设置，默认使用 `messages`。
+
+```bash
+export DEFAULT_DOMAIN=messages
+```
+
+If you really need another catalog filename, you can switch temporarily before running a command:
+
+如果你确实需要另一套 catalog 文件名，可以在执行命令前临时切换：
+
+```bash
+DEFAULT_DOMAIN=backend uv run autolang init -d locales -l zh --source .
+```
+
+## Custom Prompt / 自定义提示词
+
+`translate` automatically looks for `PROMPT.md` under the directory passed to `-d`.
+
+`translate` 会自动查找 `-d` 目录下的 `PROMPT.md`。
+
+For example:
+
+例如：
+
+```text
+i18n/
+  PROMPT.md
+  messages.pot
+  zh/LC_MESSAGES/messages.po
+```
+
+If the file exists, its content is appended to the default translation system prompt as additional instructions. This file is a good place for project glossaries, brand-name constraints, tone requirements, and similar guidance.
+
+如果该文件存在，它的内容会作为额外说明追加到默认翻译系统提示词之后。这个文件适合放项目术语表、品牌名约束、语气风格要求等内容。
+
+Example:
+
+示例：
+
+```md
+## Project-specific terminology
+
+- `Autolang` is the project name. Do not translate or localize `Autolang`.
+- Keep CLI flags such as `--source` unchanged.
+- Prefer concise product UI wording.
 ```

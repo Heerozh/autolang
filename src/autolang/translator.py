@@ -1,303 +1,401 @@
+"""OpenAI-compatible translation client used by autolang."""
+
 from __future__ import annotations
 
-import ast
-import inspect
-import locale
-import os
+import json
 from dataclasses import dataclass
-from types import CodeType, FrameType
 from typing import Any
+from urllib import error, request
 
-import executing
 from babel import Locale
-from babel.core import UnknownLocaleError
-from babel.support import Format
 
-from .source_templates import extract_template_from_call
-from .toml_io import load_string_table
+from autolang.i18n import _
 
-_ENGLISH_LOCALE = Locale.parse("en")
-_MISSING_TRANSLATION = "MISSING_TRANSLATION"
-_LANGUAGE_NAME_TO_CODE = {
-    " ".join(name.casefold().split()): code
-    for code, name in _ENGLISH_LOCALE.languages.items()
-    if isinstance(name, str)
-}
-_SCRIPT_NAME_TO_CODE = {
-    " ".join(name.casefold().split()): code
-    for code, name in _ENGLISH_LOCALE.scripts.items()
-    if isinstance(name, str)
-}
-_TERRITORY_NAME_TO_CODE = {
-    " ".join(name.casefold().split()): code
-    for code, name in _ENGLISH_LOCALE.territories.items()
-    if isinstance(name, str)
-}
+DEFAULT_SYSTEM_PROMPT = """You are a translation engine for gettext strings in a Python project.
+
+Translate every input string into the requested target language.
+The source language is unknown and individual strings may contain mixed languages. Do not ask for the source language and do not preserve the original language on purpose. Always produce a final translation in the target language.
+
+Preserve placeholders and technical content exactly unless the surrounding natural language must change:
+- Python/Babel placeholders such as {name}, {value:.2f}, %(count)s, %s, and format-like tokens
+- Markup, code spans, CLI flags, file paths, environment variables, and API/class/function names
+- Project and product names such as Autolang
+- Line breaks and meaningful whitespace
+
+When a string is already fully appropriate for the target language, keep it unchanged.
+Return strict JSON only. For singular entries use {"index":0,"text":"..."}. For plural entries use {"index":1,"plural_texts":["form 0","form 1"]}. Do not add extra prose."""
+
+
+class TranslatorError(RuntimeError):
+    """Base error raised by the translator client."""
+
+
+class TranslatorHTTPError(TranslatorError):
+    """Raised when the remote API request fails."""
+
+
+class TranslatorResponseError(TranslatorError):
+    """Raised when the model response is malformed."""
 
 
 @dataclass(frozen=True, slots=True)
-class CacheEntry:
-    template: str
-    variables: tuple[str, ...]
-    compiled_code: Any | None
+class TranslationInput:
+    """Single text entry to translate."""
+
+    text: str
+    context: str | None = None
+    comment: str | None = None
+    plural_text: str | None = None
+    expected_plural_forms: int | None = None
 
 
-CacheKey = tuple[str, int, str, int]
+@dataclass(frozen=True, slots=True)
+class TranslationOutput:
+    """Single translated text entry."""
+
+    text: str | None = None
+    plural_texts: list[str] | None = None
 
 
-def _make_cache_key(frame: FrameType) -> CacheKey:
-    code: CodeType = frame.f_code
-    qualified_name = getattr(code, "co_qualname", code.co_name)
-    return code.co_filename, code.co_firstlineno, qualified_name, frame.f_lasti
+@dataclass(frozen=True, slots=True)
+class ReferenceTranslation:
+    """Already translated text used as context for the current batch."""
+
+    source_text: str
+    translated_text: str | None = None
+    context: str | None = None
+    plural_source_text: str | None = None
+    translated_plural_texts: list[str] | None = None
 
 
-class TransparentTranslator:
+class OpenAITranslator:
+    """Thin OpenAI-compatible client for batched translation requests."""
+
     def __init__(
         self,
-        locale_str: str = "en",
-        locale_dir: str = "locales",
-    ):
-        self.locale = Locale.parse(locale_str)
-        self.format = Format(self.locale)
-        self.locale_dir = locale_dir
-        self.translations: dict[str, str] = {}
-        self._cache: dict[CacheKey, CacheEntry] = {}
-        self.reload()
+        *,
+        model: str,
+        base_url: str,
+        api_key: str | None = None,
+        system_prompt: str | None = None,
+        timeout: float = 60.0,
+        temperature: float = 0.0,
+    ) -> None:
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.system_prompt = system_prompt
+        self.timeout = timeout
+        self.temperature = temperature
 
-    def reload(self) -> None:
-        """Reload translations for the current locale and invalidate cached call sites."""
-        self.translations = self._load_translations()
-        self.clear_cache()
+    def translate_batch(
+        self,
+        *,
+        target_language: str,
+        entries: list[TranslationInput],
+        source_file: str | None = None,
+        references: list[ReferenceTranslation] | None = None,
+    ) -> list[TranslationOutput]:
+        """Translate a batch of strings into the target language."""
+        if not entries:
+            return []
 
-    def clear_cache(self) -> None:
-        self._cache.clear()
+        payload = self.build_payload(
+            target_language=target_language,
+            entries=entries,
+            source_file=source_file,
+            references=references,
+        )
+        response_data = self._post_json(payload)
+        return self._parse_outputs(response_data, expected_entries=entries)
 
-    def get_translation(self, source_template: str) -> str:
-        translated = self.translations.get(source_template)
-        if isinstance(translated, str) and translated != _MISSING_TRANSLATION:
-            return translated
-        return source_template
+    def build_payload(
+        self,
+        *,
+        target_language: str,
+        entries: list[TranslationInput],
+        source_file: str | None = None,
+        references: list[ReferenceTranslation] | None = None,
+    ) -> dict[str, object]:
+        """Build the chat completions payload for a translation batch."""
+        return {
+            "model": self.model,
+            "temperature": self.temperature,
+            "messages": self.build_messages(
+                target_language=target_language,
+                entries=entries,
+                source_file=source_file,
+                references=references,
+            ),
+        }
 
-    def translate(self, text: str) -> str:
-        frame = inspect.currentframe()
-        caller = frame.f_back if frame is not None else None
-        search_frame = caller
-        if caller is None:
-            return text
+    def build_messages(
+        self,
+        *,
+        target_language: str,
+        entries: list[TranslationInput],
+        source_file: str | None = None,
+        references: list[ReferenceTranslation] | None = None,
+    ) -> list[dict[str, str]]:
+        """Build chat messages for the current translation batch."""
+        messages = [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}]
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+
+        lang_name = Locale.parse(target_language).get_display_name() or ""
+
+        prompt_body = {
+            "task": "translate_gettext_batch",
+            "target_language": f"{target_language} [{lang_name}]",
+            "source_file": source_file,
+            "entries": [
+                _serialize_translation_input(index=index, entry=entry)
+                for index, entry in enumerate(entries)
+            ],
+            "reference_translations": [
+                _serialize_reference_translation(reference)
+                for reference in (references or [])
+            ],
+            "instructions": [
+                "Translate each entry into the target language.",
+                "The source language may be mixed or unknown inside a single string.",
+                "Preserve placeholders, formatting tokens, code, and technical identifiers exactly.",
+                "For plural entries, return exactly the requested number of plural forms.",
+                "Use the provided reference translations only as style and terminology context.",
+                "Return JSON only with the same indexes in the same order.",
+            ],
+            "response_schema": {
+                "translations": [
+                    {
+                        "index": 0,
+                        "text": "translated text",
+                    },
+                    {
+                        "index": 1,
+                        "plural_texts": ["form 0", "form 1"],
+                    },
+                ]
+            },
+        }
+        messages.append(
+            {
+                "role": "user",
+                "content": json.dumps(prompt_body, ensure_ascii=False, indent=2),
+            }
+        )
+        return messages
+
+    def _post_json(self, payload: dict[str, object]) -> dict[str, Any]:
+        endpoint = self._chat_completions_url()
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        http_request = request.Request(
+            endpoint,
+            data=body,
+            headers=headers,
+            method="POST",
+        )
 
         try:
-            while search_frame is not None:
-                translated = self._translate_from_frame(text, search_frame)
-                if translated is not None:
-                    return translated
-                search_frame = search_frame.f_back
-            return text
-        finally:
-            del search_frame
-            del caller
-            del frame
+            with request.urlopen(http_request, timeout=self.timeout) as response:
+                response_body = response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace")
+            raise TranslatorHTTPError(
+                _("Translation request failed with HTTP {code}: {details}").format(
+                    code=exc.code, details=details
+                )
+            ) from exc
+        except error.URLError as exc:
+            raise TranslatorHTTPError(
+                _("Translation request failed: {reason}").format(reason=exc.reason)
+            ) from exc
 
-    def _load_translations(self) -> dict[str, str]:
-        translations: dict[str, str] = {}
-        for locale_name in _iter_locale_fallback_names(self.locale):
-            locale_entries = load_string_table(self._locale_file_path(locale_name))
-            translations.update(
-                {
-                    key: value
-                    for key, value in locale_entries.items()
-                    if value != _MISSING_TRANSLATION
-                }
+        try:
+            data = json.loads(response_body)
+        except json.JSONDecodeError as exc:
+            raise TranslatorResponseError(
+                _("Translation API returned invalid JSON.")
+            ) from exc
+
+        if not isinstance(data, dict):
+            raise TranslatorResponseError(
+                _("Translation API response must be a JSON object.")
             )
-        return translations
+        return data
 
-    def _locale_file_path(self, locale_name: str) -> str:
-        return os.path.join(self.locale_dir, f"{locale_name}.toml")
+    def _parse_outputs(
+        self,
+        response_data: dict[str, Any],
+        *,
+        expected_entries: list[TranslationInput],
+    ) -> list[TranslationOutput]:
+        content = self._extract_message_content(response_data)
+        response_json = self._load_response_json(content)
 
-    def _translate_from_frame(self, text: str, frame: FrameType) -> str | None:
-        cache_key = _make_cache_key(frame)
-        entry = self._cache.get(cache_key)
-
-        if entry is None:
-            entry = self._build_cache_entry(frame, text)
-            if entry is None:
-                return None
-            self._cache[cache_key] = entry
-
-        return self._evaluate(entry.compiled_code, frame, text)
-
-    def _build_cache_entry(
-        self, frame: FrameType, fallback_text: str
-    ) -> CacheEntry | None:
-        execution = executing.Source.executing(frame)
-        node = execution.node
-        template, variables = self._parse_ast_node(node)
-
-        if template is None:
-            return None
-
-        translated = self.get_translation(template)
-        compiled_code = self._compile_foreign_string(translated)
-        return CacheEntry(
-            template=template, variables=variables, compiled_code=compiled_code
-        )
-
-    @staticmethod
-    def _parse_ast_node(node: ast.AST | None) -> tuple[str | None, tuple[str, ...]]:
-        return extract_template_from_call(node)
-
-    @staticmethod
-    def _compile_foreign_string(translated: str) -> Any | None:
-        try:
-            return compile(f"f{translated!r}", "<autolang>", "eval")
-        except Exception:
-            return None
-
-    def _evaluate(
-        self, compiled_code: Any | None, frame: FrameType, fallback: str
-    ) -> str:
-        if compiled_code is None:
-            print("WANNING: Fallback, compiled code is none")
-            return fallback
-
-        locals_proxy = frame.f_locals.copy()
-        locals_proxy["fmt"] = self.format
-
-        try:
-            return eval(compiled_code, frame.f_globals, locals_proxy)
-        except Exception as e:
-            print("ERROR: Fallback, eval failed with exception: " + str(e))
-            return fallback
-
-
-def install(
-    locale_dir: str = "locales",
-    locale_str: str | None = None,
-) -> TransparentTranslator:
-    """Create a translator instance without mutating the module-level default translator."""
-    frame = inspect.currentframe()
-    caller = frame.f_back if frame is not None else None
-
-    try:
-        return TransparentTranslator(
-            _parse_locale_str(locale_str) or _detect_system_locale(),
-            _resolve_locale_dir(locale_dir, caller),
-        )
-    finally:
-        del caller
-        del frame
-
-
-def _resolve_locale_dir(locale_dir: str, frame: FrameType | None) -> str:
-    if os.path.isabs(locale_dir):
-        return locale_dir
-
-    return os.path.join(_resolve_caller_root_dir(frame), locale_dir)
-
-
-def _resolve_caller_root_dir(frame: FrameType | None) -> str:
-    if frame is None:
-        return os.path.abspath(os.getcwd())
-
-    module_file = frame.f_globals.get("__file__")
-    if not isinstance(module_file, str):
-        return os.path.abspath(os.getcwd())
-
-    root_dir = os.path.dirname(os.path.abspath(module_file))
-    package_name = frame.f_globals.get("__package__")
-    if not isinstance(package_name, str) or not package_name:
-        return root_dir
-
-    for _ in range(max(len(package_name.split(".")) - 1, 0)):
-        parent_dir = os.path.dirname(root_dir)
-        if parent_dir == root_dir:
-            break
-        root_dir = parent_dir
-
-    return root_dir
-
-
-def _parse_locale_str(locale_str: str | None) -> str | None:
-    if not locale_str:
-        return None
-
-    for separator in (None, "-"):
-        try:
-            if separator is None:
-                return str(Locale.parse(locale_str))
-            return str(Locale.parse(locale_str, sep=separator))
-        except (ValueError, UnknownLocaleError):
-            continue
-
-    return _parse_windows_locale_display_name(locale_str)
-
-
-def _parse_windows_locale_display_name(locale_str: str) -> str | None:
-    locale_name = locale_str.split(".", 1)[0].partition("@")[0]
-    if "_" not in locale_name and " (" not in locale_name:
-        return None
-
-    language_part, _separator, territory_part = locale_name.partition("_")
-    script_part: str | None = None
-
-    if language_part.endswith(")") and " (" in language_part:
-        split_at = language_part.rfind(" (")
-        script_part = language_part[split_at + 2 : -1]
-        language_part = language_part[:split_at]
-
-    language_code = _LANGUAGE_NAME_TO_CODE.get(
-        _normalize_locale_name_part(language_part)
-    )
-    if language_code is None:
-        return None
-
-    script_code = None
-    if script_part:
-        script_code = _SCRIPT_NAME_TO_CODE.get(_normalize_locale_name_part(script_part))
-
-    territory_code = None
-    if territory_part:
-        territory_code = _TERRITORY_NAME_TO_CODE.get(
-            _normalize_locale_name_part(territory_part)
-        )
-
-    try:
-        return str(Locale(language_code, territory=territory_code, script=script_code))
-    except (ValueError, UnknownLocaleError):
-        return language_code
-
-
-def _normalize_locale_name_part(value: str) -> str:
-    return " ".join(value.casefold().split())
-
-
-def _detect_system_locale() -> str:
-    locale_name, _encoding = locale.getlocale()
-    for candidate in (
-        locale_name,
-        os.environ.get("LC_ALL"),
-        os.environ.get("LC_MESSAGES"),
-        os.environ.get("LANG"),
-        os.environ.get("LANGUAGE"),
-    ):
-        parsed = _parse_locale_str(candidate)
-        if parsed is not None:
-            return parsed
-
-    return "en"
-
-
-def _iter_locale_fallback_names(locale_obj: Locale) -> tuple[str, ...]:
-    locale_names = [locale_obj.language]
-    if locale_obj.script:
-        locale_names.append(str(Locale(locale_obj.language, script=locale_obj.script)))
-    if locale_obj.territory:
-        locale_names.append(
-            str(
-                Locale(
-                    locale_obj.language,
-                    territory=locale_obj.territory,
-                    script=locale_obj.script,
+        raw_translations = response_json.get("translations")
+        if not isinstance(raw_translations, list):
+            raise TranslatorResponseError(
+                _("Model response must contain a translations list.")
+            )
+        if len(raw_translations) != len(expected_entries):
+            raise TranslatorResponseError(
+                _(
+                    "Model response count does not match the number of requested entries."
                 )
             )
+
+        outputs: list[TranslationOutput] = []
+        for index, item in enumerate(raw_translations):
+            if not isinstance(item, dict):
+                raise TranslatorResponseError(
+                    _("Each translation item must be an object.")
+                )
+            if item.get("index") != index:
+                raise TranslatorResponseError(
+                    _("Model response indexes must match the original request order.")
+                )
+            expected_entry = expected_entries[index]
+            if expected_entry.plural_text is None:
+                text = item.get("text")
+                if not isinstance(text, str):
+                    raise TranslatorResponseError(
+                        _("Singular translation items must contain text.")
+                    )
+                outputs.append(TranslationOutput(text=text))
+                continue
+
+            plural_texts = item.get("plural_texts")
+            if not isinstance(plural_texts, list):
+                raise TranslatorResponseError(
+                    _("Plural translation items must contain plural_texts.")
+                )
+            expected_plural_forms = expected_entry.expected_plural_forms
+            if expected_plural_forms is None:
+                raise TranslatorResponseError(
+                    _("Plural translation inputs must define expected_plural_forms.")
+                )
+            if len(plural_texts) != expected_plural_forms:
+                raise TranslatorResponseError(
+                    _(
+                        "Plural translation count does not match the target locale plural forms."
+                    )
+                )
+            if not all(isinstance(text, str) for text in plural_texts):
+                raise TranslatorResponseError(
+                    _("Plural translation items must contain only string forms.")
+                )
+            outputs.append(TranslationOutput(plural_texts=list(plural_texts)))
+        return outputs
+
+    def _extract_message_content(self, response_data: dict[str, Any]) -> str:
+        choices = response_data.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise TranslatorResponseError(
+                _("Translation API response is missing choices.")
+            )
+
+        first_choice = choices[0]
+        if not isinstance(first_choice, dict):
+            raise TranslatorResponseError(
+                _("Translation API response choice is invalid.")
+            )
+
+        message = first_choice.get("message")
+        if not isinstance(message, dict):
+            raise TranslatorResponseError(
+                _("Translation API response is missing a message.")
+            )
+
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            text_parts: list[str] = []
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "text":
+                    text = part.get("text")
+                    if isinstance(text, str):
+                        text_parts.append(text)
+            joined = "".join(text_parts)
+            if joined:
+                return joined
+
+        raise TranslatorResponseError(
+            _("Translation API message content is missing text.")
         )
-    return tuple(dict.fromkeys(locale_names))
+
+    def _load_response_json(self, content: str) -> dict[str, Any]:
+        try:
+            decoded = json.loads(content)
+        except json.JSONDecodeError:
+            start = content.find("{")
+            end = content.rfind("}")
+            if start == -1 or end == -1 or end < start:
+                raise TranslatorResponseError(_("Model response did not contain JSON."))
+            try:
+                decoded = json.loads(content[start : end + 1])
+            except json.JSONDecodeError as exc:
+                raise TranslatorResponseError(
+                    _("Model response did not contain valid JSON.")
+                ) from exc
+
+        if not isinstance(decoded, dict):
+            raise TranslatorResponseError(_("Model response JSON must be an object."))
+        return decoded
+
+    def _chat_completions_url(self) -> str:
+        if self.base_url.endswith("/chat/completions"):
+            return self.base_url
+        return f"{self.base_url}/chat/completions"
+
+
+def _serialize_translation_input(
+    *,
+    index: int,
+    entry: TranslationInput,
+) -> dict[str, object]:
+    if entry.plural_text is None:
+        return {
+            "index": index,
+            "kind": "singular",
+            "text": entry.text,
+            "context": entry.context,
+            "comment": entry.comment,
+        }
+
+    return {
+        "index": index,
+        "kind": "plural",
+        "singular_text": entry.text,
+        "plural_text": entry.plural_text,
+        "expected_plural_forms": entry.expected_plural_forms,
+        "context": entry.context,
+        "comment": entry.comment,
+    }
+
+
+def _serialize_reference_translation(
+    reference: ReferenceTranslation,
+) -> dict[str, object]:
+    if reference.plural_source_text is None:
+        return {
+            "kind": "singular",
+            "text": reference.source_text,
+            "translation": reference.translated_text,
+            "context": reference.context,
+        }
+
+    return {
+        "kind": "plural",
+        "singular_text": reference.source_text,
+        "plural_text": reference.plural_source_text,
+        "plural_translations": reference.translated_plural_texts or [],
+        "context": reference.context,
+    }

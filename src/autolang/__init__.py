@@ -1,6 +1,5 @@
-from .translator import TransparentTranslator, install
+"""Top-level package for the autolang CLI."""
 
-__all__ = [
-    "TransparentTranslator",
-    "install",
-]
+from autolang.cli import main
+
+__all__ = ["main"]
