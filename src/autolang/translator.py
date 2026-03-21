@@ -157,7 +157,7 @@ class OpenAITranslator:
                 for reference in (references or [])
             ],
             "instructions": [
-                "Translate each entry into the target language.",
+                f"Translate each entry into the target language: {lang_name}.",
                 "The source language may be mixed or unknown inside a single string.",
                 "Preserve placeholders, formatting tokens, code, and technical identifiers exactly.",
                 "For plural entries, return exactly the requested number of plural forms.",
