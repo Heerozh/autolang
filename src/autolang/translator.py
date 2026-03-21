@@ -159,7 +159,7 @@ class OpenAITranslator:
             "instructions": [
                 f"Translate each entry into the target language: {lang_name}.",
                 "The source language may be mixed or unknown inside a single string.",
-                "If it already fits the target locale, keep it unchanged."
+                "If it already fits the target locale, keep it unchanged.",
                 "Preserve placeholders, formatting tokens, code, and technical identifiers exactly.",
                 "For plural entries, return exactly the requested number of plural forms.",
                 "Use the provided reference translations only as style and terminology context.",
