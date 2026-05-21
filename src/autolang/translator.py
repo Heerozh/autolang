@@ -78,7 +78,7 @@ class OpenAITranslator:
         base_url: str,
         api_key: str | None = None,
         system_prompt: str | None = None,
-        timeout: float = 60.0,
+        timeout: float = 600.0,
         temperature: float = 0.0,
     ) -> None:
         self.model = model
