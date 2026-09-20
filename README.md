@@ -170,7 +170,8 @@ uv run autolang translate \
   --source ./src \
   --model deepseek-chat \
   --base-url https://api.deepseek.com \
-  --api-key your-api-key
+  --api-key your-api-key \
+  --concurrency 4
 ```
 
 Translation behavior:
@@ -179,6 +180,8 @@ Translation behavior:
 
 - Process currently untranslated singular and plural entries
 - Batch by source file to avoid mixing unrelated files in the same request
+- Run up to 4 batch requests concurrently within each locale, including batches from the same source file; locales are processed sequentially
+- Save each completed batch immediately and update progress; on a request failure, stop scheduling new batches, save successful in-flight results, and report the error
 - Send already translated text from the same locale and source file as reference context
 - Preserve technical content such as `{name}`, `%(count)s`, `%s`, code identifiers, paths, and CLI arguments
 - No source language declaration is required, because text inside `_()` may be mixed-language; the model only needs to output the target-language version
@@ -187,6 +190,8 @@ Translation behavior:
 
 - 处理当前未翻译的单数和复数条目
 - 按来源文件分批，避免在同一次请求中混入无关文件
+- 每种语言默认最多并发请求 4 个批次，同一文件的不同批次也可并发；不同语言仍依次处理
+- 每批完成后立即保存并更新进度；请求失败后停止提交新批次，保存正在执行的其他请求中成功返回的结果，再报告错误
 - 将同语言、同来源文件下已翻译的文本作为参考上下文传给模型
 - 保留 `{name}`、`%(count)s`、`%s`、代码标识符、路径、CLI 参数等技术内容
 - 不要求声明源语言，因为 `_()` 里的文本可能是混合语言；模型只需要输出目标语言版本
@@ -201,6 +206,7 @@ Common arguments:
 - `--base-url`: OpenAI-compatible API base URL
 - `--api-key`: API key
 - `--batch-size`: Maximum number of untranslated strings per request. Default: `50`
+- `--concurrency`: Maximum simultaneous translation requests. Default: `4`; use `1` for sequential requests. Must be greater than `0`
 
 ----
 
@@ -210,6 +216,7 @@ Common arguments:
 - `--base-url`: OpenAI 兼容接口地址
 - `--api-key`: 接口密钥
 - `--batch-size`: 单次请求最多发送多少条未翻译文本，默认 `50`
+- `--concurrency`: 同时执行的翻译请求数上限，默认 `4`；设为 `1` 则串行执行，必须大于 `0`
 
 ## Model Configuration / 模型配置
 

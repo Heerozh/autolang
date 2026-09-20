@@ -159,6 +159,14 @@ def _configure_translate_parser(command_parser: ArgumentParser) -> None:
         default=50,
         help=_("Maximum untranslated entries to send in one model request."),
     )
+    command_parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=4,
+        help=_(
+            "Maximum concurrent translation requests. Default: 4. Use 1 for sequential requests."
+        ),
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

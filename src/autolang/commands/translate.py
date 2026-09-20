@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from argparse import Namespace
 from collections import defaultdict
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from itertools import islice
 from pathlib import Path
 
 import polib
@@ -13,7 +15,12 @@ from tqdm import tqdm
 from autolang.babel import compile_catalogs, discover_locales, locale_catalog_path
 from autolang.config import get_domain
 from autolang.i18n import _
-from autolang.translator import OpenAITranslator, ReferenceTranslation, TranslationInput
+from autolang.translator import (
+    OpenAITranslator,
+    ReferenceTranslation,
+    TranslationInput,
+    TranslationOutput,
+)
 
 
 def run(args: Namespace) -> int:
@@ -21,17 +28,25 @@ def run(args: Namespace) -> int:
     domain = get_domain()
     if not args.model:
         raise RuntimeError(
-            _("Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL.")
+            _(
+                "Missing model configuration. Set --model or AUTOLANG_MODEL/OPENAI_MODEL."
+            )
         )
     if not args.base_url:
         raise RuntimeError(
-            _("Missing base URL configuration. Set --base-url or AUTOLANG_BASE_URL/OPENAI_BASE_URL.")
+            _(
+                "Missing base URL configuration. Set --base-url or AUTOLANG_BASE_URL/OPENAI_BASE_URL."
+            )
         )
     if args.batch_size <= 0:
         raise RuntimeError(_("--batch-size must be greater than 0."))
+    if args.concurrency <= 0:
+        raise RuntimeError(_("--concurrency must be greater than 0."))
 
     prompt_path = Path(args.directory) / "PROMPT.md"
-    system_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else None
+    system_prompt = (
+        prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else None
+    )
     translator = OpenAITranslator(
         model=args.model,
         base_url=args.base_url,
@@ -53,9 +68,12 @@ def run(args: Namespace) -> int:
             sources=args.sources,
             translator=translator,
             batch_size=args.batch_size,
+            concurrency=args.concurrency,
         )
 
-    exit_code = compile_catalogs(directory=args.directory, domain=domain, locales=locales)
+    exit_code = compile_catalogs(
+        directory=args.directory, domain=domain, locales=locales
+    )
     if exit_code != 0:
         return exit_code
 
@@ -70,8 +88,9 @@ def translate_catalog(
     sources: list[str],
     translator: OpenAITranslator,
     batch_size: int,
+    concurrency: int = 4,
 ) -> bool:
-    """Translate a single locale catalog in place."""
+    """Translate batches concurrently, writing completed batches on the calling thread."""
     source_roots = {normalize_source_root(source) for source in sources}
     plural_indexes = get_plural_indexes(catalog)
     grouped_entries = collect_untranslated_entries(
@@ -82,31 +101,67 @@ def translate_catalog(
         return False
 
     total = sum(len(entries) for entries in grouped_entries.values())
+    batches: list[tuple[str, list[polib.POEntry], list[ReferenceTranslation]]] = []
+    for source_file, entries in sorted(grouped_entries.items()):
+        references = collect_reference_translations(
+            catalog,
+            source_file=source_file,
+            plural_indexes=plural_indexes,
+        )
+        batches.extend(
+            (source_file, batch, references) for batch in batched(entries, batch_size)
+        )
+
+    batch_iterator = iter(batches)
+    pending: dict[Future[list[TranslationOutput]], list[polib.POEntry]] = {}
+    failure: Exception | None = None
     translated_any = False
-    with tqdm(total=total, desc=locale, unit=_("entry")) as progress:
-        for source_file, entries in sorted(grouped_entries.items()):
-            references = collect_reference_translations(
-                catalog,
-                source_file=source_file,
-                plural_indexes=plural_indexes,
-            )
-            for batch in batched(entries, batch_size):
-                outputs = translator.translate_batch(
-                    target_language=locale,
-                    source_file=source_file,
-                    entries=build_translation_inputs(batch, plural_indexes=plural_indexes),
-                    references=references,
-                )
+    with (
+        tqdm(total=total, desc=locale, unit=_("entry")) as progress,
+        ThreadPoolExecutor(max_workers=concurrency) as executor,
+    ):
+        while True:
+            if failure is None:
+                for source_file, batch, references in islice(
+                    batch_iterator, concurrency - len(pending)
+                ):
+                    future = executor.submit(
+                        translator.translate_batch,
+                        target_language=locale,
+                        source_file=source_file,
+                        entries=build_translation_inputs(
+                            batch, plural_indexes=plural_indexes
+                        ),
+                        references=references,
+                    )
+                    pending[future] = batch
+            if not pending:
+                break
+
+            completed, _pending = wait(pending, return_when=FIRST_COMPLETED)
+            for future in completed:
+                batch = pending.pop(future)
+                try:
+                    outputs = future.result()
+                except Exception as exc:
+                    # Drain in-flight requests and save successes before reporting failure.
+                    if failure is None:
+                        failure = exc
+                    continue
                 for entry, output in zip(batch, outputs, strict=True):
                     if not entry.msgid_plural:
                         if output.text is None:
-                            raise RuntimeError(_("Singular translation response is missing text."))
+                            raise RuntimeError(
+                                _("Singular translation response is missing text.")
+                            )
                         entry.msgstr = output.text
                         clear_fuzzy_flag(entry)
                     else:
                         if output.plural_texts is None:
                             raise RuntimeError(
-                                _("Plural translation response is missing plural_texts.")
+                                _(
+                                    "Plural translation response is missing plural_texts."
+                                )
                             )
                         apply_plural_translation(
                             entry,
@@ -114,9 +169,12 @@ def translate_catalog(
                             plural_indexes=plural_indexes,
                         )
                         clear_fuzzy_flag(entry)
+                catalog.save(str(po_path))
                 progress.update(len(batch))
                 translated_any = True
-                catalog.save(str(po_path))
+
+    if failure is not None:
+        raise failure
 
     return translated_any
 
@@ -165,8 +223,7 @@ def collect_reference_translations(
                 context=entry.msgctxt,
                 plural_source_text=entry.msgid_plural,
                 translated_plural_texts=[
-                    entry.msgstr_plural.get(index, "")
-                    for index in plural_indexes
+                    entry.msgstr_plural.get(index, "") for index in plural_indexes
                 ],
             )
         )
@@ -282,7 +339,9 @@ def apply_plural_translation(
 ) -> None:
     """Write plural translation forms back into a PO entry."""
     if len(plural_texts) != len(plural_indexes):
-        raise RuntimeError(_("Plural translation count does not match target plural slots."))
+        raise RuntimeError(
+            _("Plural translation count does not match target plural slots.")
+        )
     for index, text in zip(plural_indexes, plural_texts, strict=True):
         entry.msgstr_plural[index] = text
 

@@ -11,9 +11,11 @@ from autolang.cli import main
 from autolang.translator import TranslationOutput
 
 
+@pytest.mark.parametrize("concurrency", [1, 4])
 def test_translate_groups_by_source_file_and_uses_prompt_context(
     sample_project: Path,
     monkeypatch,
+    concurrency: int,
 ) -> None:
     write_source(sample_project / "src" / "app.py", ["hello", "welcome"])
     write_source(sample_project / "src" / "admin.py", ["save"])
@@ -130,6 +132,8 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
             "https://example.com/v1",
             "--api-key",
             "test-key",
+            "--concurrency",
+            str(concurrency),
         ]
     )
 
@@ -144,6 +148,9 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
             "temperature": 0.0,
         }
     ]
+    captured_calls.sort(
+        key=lambda call: (str(call["target_language"]), str(call["source_file"]))
+    )
     assert captured_calls == [
         {
             "target_language": "en",
@@ -171,30 +178,48 @@ def test_translate_groups_by_source_file_and_uses_prompt_context(
         },
     ]
 
-    assert get_translation(
-        sample_project / "locales" / "en" / "LC_MESSAGES" / "messages.po",
-        "hello",
-    ) == "Hello"
-    assert get_translation(
-        sample_project / "locales" / "en" / "LC_MESSAGES" / "messages.po",
-        "welcome",
-    ) == "en:welcome"
-    assert get_translation(
-        sample_project / "locales" / "en" / "LC_MESSAGES" / "messages.po",
-        "save",
-    ) == "en:save"
-    assert get_translation(
-        sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
-        "hello",
-    ) == "你好"
-    assert get_translation(
-        sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
-        "welcome",
-    ) == "zh:welcome"
-    assert get_translation(
-        sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
-        "save",
-    ) == "zh:save"
+    assert (
+        get_translation(
+            sample_project / "locales" / "en" / "LC_MESSAGES" / "messages.po",
+            "hello",
+        )
+        == "Hello"
+    )
+    assert (
+        get_translation(
+            sample_project / "locales" / "en" / "LC_MESSAGES" / "messages.po",
+            "welcome",
+        )
+        == "en:welcome"
+    )
+    assert (
+        get_translation(
+            sample_project / "locales" / "en" / "LC_MESSAGES" / "messages.po",
+            "save",
+        )
+        == "en:save"
+    )
+    assert (
+        get_translation(
+            sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
+            "hello",
+        )
+        == "你好"
+    )
+    assert (
+        get_translation(
+            sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
+            "welcome",
+        )
+        == "zh:welcome"
+    )
+    assert (
+        get_translation(
+            sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
+            "save",
+        )
+        == "zh:save"
+    )
 
 
 def test_translate_skips_when_no_untranslated_entries(
@@ -252,10 +277,13 @@ def test_translate_skips_when_no_untranslated_entries(
 
     assert exit_code == 0
     assert calls == ["init"]
-    assert get_translation(
-        sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
-        "hello",
-    ) == "你好"
+    assert (
+        get_translation(
+            sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po",
+            "hello",
+        )
+        == "你好"
+    )
 
 
 def test_translate_backfills_plural_entries(
@@ -336,7 +364,9 @@ def test_translate_backfills_plural_entries(
         }
     ]
 
-    catalog = polib.pofile(str(sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po"))
+    catalog = polib.pofile(
+        str(sample_project / "locales" / "zh" / "LC_MESSAGES" / "messages.po")
+    )
     entry = catalog.find("{count} file")
     assert entry is not None
     assert entry.msgid_plural == "{count} files"
@@ -402,7 +432,9 @@ def test_translate_defaults_to_detected_package_directory(
     project_layout_factory,
     monkeypatch,
 ) -> None:
-    project_root, code_dir = project_layout_factory(package_name="demo_app", layout="src")
+    project_root, code_dir = project_layout_factory(
+        package_name="demo_app", layout="src"
+    )
     write_source(code_dir / "app.py", ["hello", "welcome"])
     write_source(code_dir / "admin.py", ["save"])
     assert main(["init", "-l", "en", "-l", "zh"]) == 0
@@ -412,8 +444,12 @@ def test_translate_defaults_to_detected_package_directory(
         "Do not translate Autolang.\nPrefer concise UI text.\n",
         encoding="utf-8",
     )
-    set_translation(catalog_root / "en" / "LC_MESSAGES" / "messages.po", "hello", "Hello")
-    set_translation(catalog_root / "zh" / "LC_MESSAGES" / "messages.po", "hello", "你好")
+    set_translation(
+        catalog_root / "en" / "LC_MESSAGES" / "messages.po", "hello", "Hello"
+    )
+    set_translation(
+        catalog_root / "zh" / "LC_MESSAGES" / "messages.po", "hello", "你好"
+    )
 
     captured_calls: list[dict[str, object]] = []
 
@@ -455,16 +491,22 @@ def test_translate_defaults_to_detected_package_directory(
     )
 
     assert exit_code == 0
+    captured_calls.sort(
+        key=lambda call: (str(call["target_language"]), str(call["source_file"]))
+    )
     assert captured_calls == [
         {"target_language": "en", "source_file": "src/demo_app/admin.py"},
         {"target_language": "en", "source_file": "src/demo_app/app.py"},
         {"target_language": "zh", "source_file": "src/demo_app/admin.py"},
         {"target_language": "zh", "source_file": "src/demo_app/app.py"},
     ]
-    assert get_translation(catalog_root / "en" / "LC_MESSAGES" / "messages.po", "welcome") == (
-        "en:welcome"
+    assert get_translation(
+        catalog_root / "en" / "LC_MESSAGES" / "messages.po", "welcome"
+    ) == ("en:welcome")
+    assert (
+        get_translation(catalog_root / "zh" / "LC_MESSAGES" / "messages.po", "save")
+        == "zh:save"
     )
-    assert get_translation(catalog_root / "zh" / "LC_MESSAGES" / "messages.po", "save") == "zh:save"
 
 
 def test_translate_requires_pyproject_toml_in_project_root(
@@ -496,8 +538,7 @@ def write_source(path: Path, messages: list[str]) -> None:
     body = "\n".join(f'print(_("{message}"))' for message in messages)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        "from gettext import gettext as _\n\n"
-        f"{body}\n",
+        f"from gettext import gettext as _\n\n{body}\n",
         encoding="utf-8",
     )
 
