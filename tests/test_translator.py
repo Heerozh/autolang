@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 
 import pytest
 
@@ -181,8 +182,7 @@ def test_translate_batch_accepts_json_wrapped_in_extra_text() -> None:
             {
                 "message": {
                     "content": (
-                        "Result:\n"
-                        '{"translations":[{"index":0,"text":"简体中文"}]}'
+                        'Result:\n{"translations":[{"index":0,"text":"简体中文"}]}'
                     )
                 }
             }
@@ -195,6 +195,88 @@ def test_translate_batch_accepts_json_wrapped_in_extra_text() -> None:
     )
 
     assert [output.text for output in outputs] == ["简体中文"]
+
+
+@pytest.mark.parametrize(
+    ("response_data", "reason"),
+    [
+        (
+            {
+                "choices": [
+                    {
+                        "message": {"content": '{"index":0,"text":"مرحبا"}'},
+                        "finish_reason": "stop",
+                    }
+                ]
+            },
+            "Model response must contain a translations list.",
+        ),
+        (
+            {"choices": [{"message": {"content": '{"translations":null}'}}]},
+            "Model response must contain a translations list.",
+        ),
+        (
+            {"choices": [{"message": {"content": "无法完成翻译"}}]},
+            "Model response did not contain JSON.",
+        ),
+        (
+            {"error": {"message": "服务暂不可用"}},
+            "Translation API response is missing choices.",
+        ),
+    ],
+)
+def test_translate_batch_includes_response_in_parse_errors(
+    monkeypatch: pytest.MonkeyPatch, response_data: dict[str, object], reason: str
+) -> None:
+    monkeypatch.setattr("autolang.translator._", lambda message: message)
+    translator = OpenAITranslator(
+        model="gpt-test",
+        base_url="https://example.com/v1",
+        api_key="secret-api-key",
+    )
+    translator._post_json = lambda payload: response_data  # type: ignore[method-assign]
+
+    with pytest.raises(TranslatorResponseError) as exc_info:
+        translator.translate_batch(
+            target_language="ar",
+            entries=[TranslationInput(text="Hello")],
+        )
+
+    message = str(exc_info.value)
+    assert message.startswith(reason)
+    assert "Translation API response:\n" in message
+    assert json.dumps(response_data, ensure_ascii=False, indent=2) in message
+    assert "secret-api-key" not in message
+
+
+@pytest.mark.parametrize(
+    ("response_body", "reason"),
+    [
+        ("<html>服务暂不可用</html>", "Translation API returned invalid JSON."),
+        ('["unexpected response"]', "Translation API response must be a JSON object."),
+    ],
+)
+def test_translate_batch_includes_invalid_api_response(
+    monkeypatch: pytest.MonkeyPatch, response_body: str, reason: str
+) -> None:
+    monkeypatch.setattr("autolang.translator._", lambda message: message)
+    translator = OpenAITranslator(
+        model="gpt-test",
+        base_url="https://example.com/v1",
+    )
+    monkeypatch.setattr(
+        "autolang.translator.request.urlopen",
+        lambda *args, **kwargs: BytesIO(response_body.encode("utf-8")),
+    )
+
+    with pytest.raises(TranslatorResponseError) as exc_info:
+        translator.translate_batch(
+            target_language="zh",
+            entries=[TranslationInput(text="Hello")],
+        )
+
+    assert str(exc_info.value).startswith(reason)
+    assert str(exc_info.value).endswith(f"Translation API response:\n{response_body}")
 
 
 def test_translate_batch_rejects_mismatched_indexes() -> None:

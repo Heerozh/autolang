@@ -107,7 +107,15 @@ class OpenAITranslator:
             references=references,
         )
         response_data = self._post_json(payload)
-        return self._parse_outputs(response_data, expected_entries=entries)
+        try:
+            return self._parse_outputs(response_data, expected_entries=entries)
+        except TranslatorResponseError as exc:
+            raise TranslatorResponseError(
+                _("{error}\n\nTranslation API response:\n{response}").format(
+                    error=exc,
+                    response=json.dumps(response_data, ensure_ascii=False, indent=2),
+                )
+            ) from exc
 
     def build_payload(
         self,
@@ -222,12 +230,16 @@ class OpenAITranslator:
             data = json.loads(response_body)
         except json.JSONDecodeError as exc:
             raise TranslatorResponseError(
-                _("Translation API returned invalid JSON.")
+                _(
+                    "Translation API returned invalid JSON.\n\nTranslation API response:\n{response}"
+                ).format(response=response_body)
             ) from exc
 
         if not isinstance(data, dict):
             raise TranslatorResponseError(
-                _("Translation API response must be a JSON object.")
+                _(
+                    "Translation API response must be a JSON object.\n\nTranslation API response:\n{response}"
+                ).format(response=response_body)
             )
         return data
 
