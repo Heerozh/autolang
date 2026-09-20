@@ -23,7 +23,13 @@ Preserve placeholders and technical content exactly unless the surrounding natur
 - Line breaks and meaningful whitespace
 
 When a string is already fully appropriate for the target language, keep it unchanged.
-Return strict JSON only. For singular entries use {"index":0,"text":"..."}. For plural entries use {"index":1,"plural_texts":["form 0","form 1"]}. Do not add extra prose."""
+Return strict JSON only, as an object with a top-level "translations" array.
+Always include the "translations" wrapper, even when there is only one input entry. Never return a bare translation item or a bare array.
+The array must contain exactly one item per input entry, with the same indexes in the same order.
+For singular entries, each array item must contain "index" and "text". For plural entries, each array item must contain "index" and "plural_texts" with exactly the requested number of forms. Singular and plural describe gettext entry types, not the number of entries in the batch.
+Example for one singular entry: {"translations":[{"index":0,"text":"..."}]}
+Example for one plural entry requiring two forms: {"translations":[{"index":0,"plural_texts":["form 0","form 1"]}]}
+Do not add extra prose."""
 
 
 class TranslatorError(RuntimeError):
@@ -171,7 +177,7 @@ class OpenAITranslator:
                 "Preserve placeholders, formatting tokens, code, and technical identifiers exactly.",
                 "For plural entries, return exactly the requested number of plural forms.",
                 "Use the provided reference translations only as style and terminology context.",
-                "Return JSON only with the same indexes in the same order.",
+                'Return a JSON object with a "translations" array, even for a single entry, with the same indexes in the same order.',
             ],
             "response_schema": {
                 "translations": [
@@ -253,6 +259,13 @@ class OpenAITranslator:
         response_json = self._load_response_json(content)
 
         raw_translations = response_json.get("translations")
+        if (
+            len(expected_entries) == 1
+            and "translations" not in response_json
+            and "index" in response_json
+        ):
+            # Accept an omitted wrapper for one entry, then apply all normal validation.
+            raw_translations = [response_json]
         if not isinstance(raw_translations, list):
             raise TranslatorResponseError(
                 _("Model response must contain a translations list.")

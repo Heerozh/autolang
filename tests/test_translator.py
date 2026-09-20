@@ -204,7 +204,7 @@ def test_translate_batch_accepts_json_wrapped_in_extra_text() -> None:
             {
                 "choices": [
                     {
-                        "message": {"content": '{"index":0,"text":"مرحبا"}'},
+                        "message": {"content": '{"translation":"مرحبا"}'},
                         "finish_reason": "stop",
                     }
                 ]
@@ -277,6 +277,79 @@ def test_translate_batch_includes_invalid_api_response(
 
     assert str(exc_info.value).startswith(reason)
     assert str(exc_info.value).endswith(f"Translation API response:\n{response_body}")
+
+
+@pytest.mark.parametrize(
+    ("locale", "entry", "response_item", "expected"),
+    [
+        (
+            "zh_Hant",
+            TranslationInput(text="{cname}.{pname}不是字符串属性（dtype={d}）"),
+            {"index": 0, "text": "{cname}.{pname}不是字串屬性（dtype={d}）"},
+            TranslationOutput(text="{cname}.{pname}不是字串屬性（dtype={d}）"),
+        ),
+        (
+            "en",
+            TranslationInput(
+                text="{count} file",
+                plural_text="{count} files",
+                expected_plural_forms=2,
+            ),
+            {"index": 0, "plural_texts": ["{count} file", "{count} files"]},
+            TranslationOutput(plural_texts=["{count} file", "{count} files"]),
+        ),
+    ],
+)
+def test_translate_batch_accepts_single_object_response(
+    locale: str,
+    entry: TranslationInput,
+    response_item: dict[str, object],
+    expected: TranslationOutput,
+) -> None:
+    translator = OpenAITranslator(model="gpt-test", base_url="https://example.com/v1")
+    translator._post_json = lambda payload: {  # type: ignore[method-assign]
+        "choices": [
+            {"message": {"content": json.dumps(response_item, ensure_ascii=False)}}
+        ]
+    }
+
+    assert translator.translate_batch(target_language=locale, entries=[entry]) == [
+        expected
+    ]
+
+
+@pytest.mark.parametrize(
+    ("plural", "entry_count", "response_item"),
+    [
+        (False, 2, {"index": 0, "text": "Hello"}),
+        (False, 1, {"text": "Hello"}),
+        (False, 1, {"index": 9, "text": "Hello"}),
+        (False, 1, {"index": "0", "text": "Hello"}),
+        (False, 1, {"index": 0}),
+        (False, 1, {"index": 0, "text": 42}),
+        (False, 1, {"index": 0, "text": "Hello", "translations": None}),
+        (False, 1, {"index": 0, "text": "Hello", "translations": []}),
+        (True, 1, {"index": 0, "text": "file"}),
+        (True, 1, {"index": 0, "plural_texts": "files"}),
+        (True, 1, {"index": 0, "plural_texts": ["file"]}),
+        (True, 1, {"index": 0, "plural_texts": ["file", 42]}),
+    ],
+)
+def test_single_object_fallback_preserves_validation(
+    plural: bool, entry_count: int, response_item: dict[str, object]
+) -> None:
+    translator = OpenAITranslator(model="gpt-test", base_url="https://example.com/v1")
+    translator._post_json = lambda payload: {  # type: ignore[method-assign]
+        "choices": [{"message": {"content": json.dumps(response_item)}}]
+    }
+    entry = TranslationInput(
+        text="file",
+        plural_text="files" if plural else None,
+        expected_plural_forms=2 if plural else None,
+    )
+
+    with pytest.raises(TranslatorResponseError):
+        translator.translate_batch(target_language="en", entries=[entry] * entry_count)
 
 
 def test_translate_batch_rejects_mismatched_indexes() -> None:
